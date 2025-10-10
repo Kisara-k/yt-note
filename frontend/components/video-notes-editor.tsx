@@ -57,19 +57,28 @@ export function VideoNotesEditor() {
       }
 
       const videoData: VideoInfo = await videoResponse.json();
+
+      // Start note fetch immediately after getting video_id (parallel processing)
+      const notePromise = fetch(`/api/note/${videoData.video_id}`)
+        .then(async (response) => {
+          if (response.ok) {
+            const noteData: NoteData = await response.json();
+            return noteData.note_content || '';
+          }
+          return '';
+        })
+        .catch(() => '');
+
+      // Set video info immediately (don't wait for note)
       setVideoInfo(videoData);
       toast.success(`Loaded: ${videoData.title}`);
 
-      // Fetch existing note if available
-      const noteResponse = await fetch(`/api/note/${videoData.video_id}`);
-      if (noteResponse.ok) {
-        const noteData: NoteData = await noteResponse.json();
-        if (noteData.note_content) {
-          setNoteContent(noteData.note_content);
-          toast.info('Existing note loaded');
-        } else {
-          setNoteContent('');
-        }
+      // Wait for note to complete and update
+      const loadedNote = await notePromise;
+      setNoteContent(loadedNote);
+
+      if (loadedNote) {
+        toast.info('Existing note loaded');
       }
 
       setHasUnsavedChanges(false);
