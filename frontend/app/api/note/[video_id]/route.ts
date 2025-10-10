@@ -4,10 +4,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { video_id: string } }
+  { params }: { params: Promise<{ video_id: string }> }
 ) {
   try {
-    const video_id = params.video_id;
+    const { video_id } = await params;
 
     // Call backend API
     const response = await fetch(`${BACKEND_URL}/api/note/${video_id}`);

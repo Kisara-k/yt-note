@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Content } from '@tiptap/react';
-import { MinimalTiptapEditor } from '@/components/ui/minimal-tiptap';
+import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -120,11 +119,9 @@ export function VideoNotesEditor() {
     }
   };
 
-  const handleEditorChange = (content: Content) => {
-    // Convert content to markdown string
-    const markdownContent =
-      typeof content === 'string' ? content : JSON.stringify(content);
-    setNoteContent(markdownContent);
+  const handleEditorChange = (markdown: string) => {
+    // Content is already in markdown format from TiptapMarkdownEditor
+    setNoteContent(markdown);
     if (videoInfo) {
       setHasUnsavedChanges(true);
     }
@@ -227,17 +224,12 @@ export function VideoNotesEditor() {
               </Button>
             </div>
 
-            <div className='border rounded-lg overflow-hidden'>
-              <MinimalTiptapEditor
+            <div className='border rounded-lg overflow-hidden bg-background'>
+              <TiptapMarkdownEditor
                 value={noteContent}
                 onChange={handleEditorChange}
                 className='min-h-[500px]'
-                editorContentClassName='p-5'
-                output='html'
                 placeholder='Start writing your notes here...'
-                autofocus={true}
-                editable={true}
-                editorClassName='focus:outline-none'
               />
             </div>
 
