@@ -1,10 +1,10 @@
-@import "./partials/code.css";
-@import "./partials/placeholder.css";
-@import "./partials/lists.css";
-@import "./partials/typography.css";
-@import "./partials/zoom.css";
+@reference "tailwindcss";
 
-@reference "../../../global.css";
+@import './partials/code.css';
+@import './partials/placeholder.css';
+@import './partials/lists.css';
+@import './partials/typography.css';
+@import './partials/zoom.css';
 
 :root {
   --mt-overlay: rgba(251, 251, 251, 0.75);
@@ -148,7 +148,12 @@
 
 .minimal-tiptap-editor .ProseMirror blockquote::before,
 .minimal-tiptap-editor .ProseMirror blockquote.is-empty::before {
-  @apply bg-accent-foreground/15 absolute top-0 bottom-0 left-0 h-full w-1 rounded-sm content-[''];
+  @apply absolute top-0 bottom-0 left-0 h-full w-1 rounded-sm content-[''];
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent-foreground) 15%,
+    transparent
+  );
 }
 
 .minimal-tiptap-editor .ProseMirror hr {
@@ -156,7 +161,8 @@
 }
 
 .minimal-tiptap-editor .ProseMirror-focused hr.ProseMirror-selectednode {
-  @apply outline-muted-foreground rounded-full outline-2 outline-offset-1;
+  @apply rounded-full outline-2 outline-offset-1;
+  outline-color: var(--color-muted-foreground);
 }
 
 .minimal-tiptap-editor .ProseMirror .ProseMirror-gapcursor {
@@ -181,7 +187,7 @@
 
 .minimal-tiptap-editor .ProseMirror .selection,
 .minimal-tiptap-editor .ProseMirror *::selection {
-  @apply bg-primary/25;
+  background-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 /* Override native selection when custom selection is present */

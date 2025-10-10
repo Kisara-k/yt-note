@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Markdown Editor - TipTap',
-  description: 'A powerful markdown editor built with TipTap and Next.js',
+  title: 'YouTube Notes - Video Note Taking App',
+  description: 'Create and manage markdown notes for YouTube videos',
 };
 
 export default function RootLayout({

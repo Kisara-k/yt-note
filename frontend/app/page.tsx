@@ -1,5 +1,5 @@
-﻿import { MarkdownEditor } from '@/components/markdown-editor';
+﻿import { VideoNotesEditor } from '@/components/video-notes-editor';
 
 export default function Home() {
-  return <MarkdownEditor />;
+  return <VideoNotesEditor />;
 }

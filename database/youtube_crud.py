@@ -9,8 +9,9 @@ from dotenv import load_dotenv
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from the same directory as this script
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+load_dotenv(env_path)
 
 # Initialize Supabase client
 url: str = os.getenv("SUPABASE_URL")

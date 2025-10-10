@@ -114,3 +114,55 @@ CREATE POLICY "Allow all operations for testing" ON notes
 FOR ALL 
 USING (true)
 WITH CHECK (true);
+
+-- ===================================================
+-- Create the 'video_notes' table for storing markdown notes for videos
+-- ===================================================
+
+-- Drop existing table if it exists
+DROP TABLE IF EXISTS video_notes CASCADE;
+
+-- Create the video_notes table
+CREATE TABLE video_notes (
+    -- Primary identifier (YouTube video ID)
+    video_id VARCHAR(20) PRIMARY KEY,
+    
+    -- Note content in markdown
+    note_content TEXT,
+    
+    -- User email (for future multi-user support)
+    user_email VARCHAR(255),
+    
+    -- Automatic timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Foreign key to youtube_videos table
+    CONSTRAINT fk_video
+        FOREIGN KEY(video_id) 
+        REFERENCES youtube_videos(id)
+        ON DELETE CASCADE
+);
+
+-- Create indexes for common queries
+CREATE INDEX idx_video_notes_user_email ON video_notes(user_email);
+CREATE INDEX idx_video_notes_updated_at ON video_notes(updated_at);
+
+-- Create trigger to auto-update updated_at
+CREATE TRIGGER update_video_notes_updated_at
+    BEFORE UPDATE ON video_notes
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE video_notes ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Allow all operations for testing" ON video_notes;
+
+-- Create a policy to allow all operations (for testing)
+-- WARNING: In production, you should have more restrictive policies!
+CREATE POLICY "Allow all operations for testing" ON video_notes
+FOR ALL 
+USING (true)
+WITH CHECK (true);

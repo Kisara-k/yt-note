@@ -1,6 +1,18 @@
 # YouTube Notes Application
 
-A full-stack application for fetching YouTube video details and storing them in a database, with a modern frontend for viewing and managing video information.
+A full-stack application for creating and managing markdown notes for YouTube videos. Enter a video URL, and the app will fetch video information and let you write notes using a powerful TipTap markdown editor.
+
+## ✨ New: Task 2 Complete!
+
+**Single-user web app is now live!** 🎉
+
+- ✅ Enter YouTube video URL or ID
+- ✅ Auto-fetch video info (title, channel, stats)
+- ✅ Create markdown notes with TipTap editor
+- ✅ Auto-save notes to database
+- ✅ Load existing notes automatically
+
+**Quick Start**: See [QUICK_START_TASK2.md](QUICK_START_TASK2.md) for 5-minute setup!
 
 ## 🚀 Quick Start
 
@@ -8,37 +20,39 @@ A full-stack application for fetching YouTube video details and storing them in 
 
 - Python 3.8+
 - Node.js 18+
+- pnpm
 - Supabase account
 - YouTube Data API v3 key
 
-### Setup
+### Setup (5 minutes)
 
-1. **Clone and install dependencies**
+1. **Install dependencies**
 
 ```bash
-# Install Python dependencies
+# Python dependencies
 cd database
 pip install -r requirements.txt
 
-# Install frontend dependencies
+# Frontend dependencies
 cd ../frontend
 pnpm install
 ```
 
-2. **Configure environment variables**
+2. **Configure environment**
 
-Create a `.env` file in the root directory:
+Create `.env` in root:
 
 ```env
-# YouTube API
 YOUTUBE_API_KEY=your_youtube_api_key_here
-
-# Supabase
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_anon_key
-
-# Database (for direct psycopg2 connection)
 DB_PASSWORD=your_db_password
+```
+
+Create `frontend/.env.local`:
+
+```env
+BACKEND_URL=http://localhost:8000
 ```
 
 3. **Create database tables**
@@ -50,45 +64,63 @@ python create_table.py
 
 4. **Run the application**
 
+**Terminal 1 - Backend API:**
+
 ```bash
-# Run backend demo
 cd backend
-python main.py --demo
+python -m uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
 
-# Or fetch specific videos
-python main.py https://www.youtube.com/watch?v=VIDEO_ID
+**Terminal 2 - Frontend:**
 
-# Run frontend
+```bash
 cd frontend
 pnpm dev
 ```
+
+Open http://localhost:3000 and start taking notes! 🎉
 
 ## 📁 Project Structure
 
 ```
 yt-note/
-├── backend/           # YouTube API integration
-│   ├── main.py       # Main integration script
-│   ├── fetch_youtube_videos.py  # YouTube API fetching
-│   ├── youtube_api_demo.ipynb   # API exploration notebook
-│   └── README.md
-├── database/         # Database layer
-│   ├── create_table.sql       # Table schemas
-│   ├── create_table.py        # Table creation script
-│   ├── youtube_crud.py        # YouTube video CRUD operations
-│   ├── db_crud.py            # General CRUD operations
-│   ├── requirements.txt
-│   ├── SETUP.md
-│   └── docs/         # Documentation
-└── frontend/         # Next.js frontend
-    ├── app/         # Next.js app directory
-    ├── components/  # React components
-    └── README.md
+├── backend/
+│   ├── api.py                    # FastAPI REST API (NEW - Task 2)
+│   ├── fetch_youtube_videos.py   # YouTube API integration
+│   ├── main.py                   # CLI tool
+│   └── test_task2.py            # Test suite (NEW - Task 2)
+├── database/
+│   ├── create_table.sql          # Database schemas (youtube_videos + video_notes)
+│   ├── youtube_crud.py           # Video CRUD operations
+│   ├── video_notes_crud.py       # Note CRUD operations (NEW - Task 2)
+│   └── requirements.txt          # Python dependencies (includes FastAPI)
+└── frontend/
+    ├── app/
+    │   ├── api/                  # Next.js API routes (NEW - Task 2)
+    │   │   ├── video/
+    │   │   └── note/
+    │   ├── layout.tsx
+    │   └── page.tsx              # Main app page
+    ├── components/
+    │   ├── video-notes-editor.tsx  # Main UI component (NEW - Task 2)
+    │   └── ui/                     # TipTap editor & UI components
+    └── .env.local                  # Frontend config
 ```
 
 ## 🎯 Features
 
-### Backend
+### Task 2: Single-User Web App ✅
+
+- ✅ **Video Input**: Enter YouTube URL or video ID
+- ✅ **Smart Fetching**: Checks database first, fetches from YouTube API if needed
+- ✅ **Video Display**: Shows title, channel name, views, likes
+- ✅ **TipTap Editor**: Full-featured markdown editor
+- ✅ **Note Management**: Create, edit, and save notes for each video
+- ✅ **Auto-load**: Existing notes load automatically
+- ✅ **Unsaved Indicator**: Know when you have unsaved changes
+- ✅ **Toast Notifications**: User-friendly feedback
+
+### Task 1: YouTube API Integration ✅
 
 - ✅ Fetch YouTube video details using batch API (up to 50 videos per request)
 - ✅ Store video data in PostgreSQL/Supabase
@@ -98,6 +130,14 @@ yt-note/
 - ✅ JSONB support for complex nested objects
 - ✅ Upsert functionality (update existing or create new)
 - ✅ Comprehensive query functions (by ID, channel, tags, date range)
+
+### Backend API
+
+- ✅ FastAPI REST API with OpenAPI docs
+- ✅ CORS configured for frontend
+- ✅ Request/response validation
+- ✅ Error handling
+- ✅ 4 main endpoints (video fetch, note CRUD)
 
 ### Database Schema
 
@@ -239,6 +279,16 @@ See `database/docs/1 SUPABASE_CONNECTION_GUIDE.md` for detailed instructions.
 
 ## 🐛 Troubleshooting
 
+### Backend won't start (Task 2)
+
+Make sure you have installed FastAPI: `pip install fastapi uvicorn pydantic`
+
+### Frontend can't connect to backend
+
+- Check backend is running on port 8000
+- Verify `frontend/.env.local` has `BACKEND_URL=http://localhost:8000`
+- Check browser console for CORS errors
+
 ### "YOUTUBE_API_KEY not found"
 
 Make sure you have created a `.env` file with your YouTube API key.
@@ -255,23 +305,52 @@ Check your Supabase credentials in the `.env` file.
 
 You've hit YouTube API's daily quota limit (10,000 units). Wait until the next day or request a quota increase from Google Cloud Console.
 
-### Import errors in main.py
+### Video notes not saving
 
-This is normal - the import paths are resolved at runtime using `sys.path.append()`.
+- Make sure backend API is running
+- Check that `video_notes` table exists (run `create_table.py`)
+- Ensure the video exists in `youtube_videos` table first
 
-## 📝 TODO / Roadmap
+## 📚 Documentation
 
-- [x] YouTube API integration
-- [x] Database schema and CRUD operations
-- [x] Batch processing
-- [x] Automatic timestamp tracking
-- [ ] Frontend video display
-- [ ] Search and filter UI
+### Task 2 (Web App)
+
+- [TASK2_SUMMARY.md](TASK2_SUMMARY.md) - Implementation overview
+- [TASK2_IMPLEMENTATION.md](TASK2_IMPLEMENTATION.md) - Detailed guide
+- [QUICK_START_TASK2.md](QUICK_START_TASK2.md) - 5-minute quick start
+
+### Task 1 (YouTube API)
+
+- [Task 1 - download video data/TASK1_COMPLETE.md](Task%201%20-%20download%20video%20data/TASK1_COMPLETE.md) - Task 1 summary
+- [Task 1 - download video data/SETUP_GUIDE.md](Task%201%20-%20download%20video%20data/SETUP_GUIDE.md) - Setup guide
+- [database/docs/](database/docs/) - Database documentation
+
+## 📝 Roadmap
+
+### Completed ✅
+
+- [x] Task 1: YouTube API integration
+- [x] Task 1: Database schema and CRUD operations
+- [x] Task 1: Batch processing
+- [x] Task 1: Automatic timestamp tracking
+- [x] Task 2: Video input and display
+- [x] Task 2: Note-taking with TipTap editor
+- [x] Task 2: Save and load notes
+- [x] Task 2: FastAPI backend
+- [x] Task 2: Next.js frontend
+
+### Future Enhancements 🚀
+
+- [ ] User authentication (Google OAuth)
+- [ ] Multi-user support
+- [ ] Dashboard with all notes
+- [ ] Search and filter notes
+- [ ] Categories/tags for notes
+- [ ] Export notes as markdown
+- [ ] Video player integration
+- [ ] Auto-save while typing
 - [ ] Scheduled updates for video statistics
-- [ ] User authentication
-- [ ] Note-taking functionality
-- [ ] Video bookmarking
-- [ ] Export functionality
+- [ ] Mobile app version
 
 ## 📄 License
 
