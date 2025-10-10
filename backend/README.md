@@ -124,6 +124,66 @@ CREATE TABLE youtube_videos (
 
 ## Usage
 
+### Start the Backend API Server
+
+The simplest way to start the backend:
+
+```bash
+cd backend
+python main.py
+```
+
+This will start the FastAPI server at http://localhost:8000 with:
+
+- **API endpoints**: http://localhost:8000/api/\*
+- **Interactive documentation**: http://localhost:8000/docs
+- **Auto-reload enabled** for development
+
+#### Alternative: Direct uvicorn command
+
+```bash
+cd backend
+python -m uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### Environment Variables (Optional)
+
+You can customize the server by setting environment variables in `database/.env`:
+
+```env
+API_HOST=0.0.0.0
+API_PORT=8000
+API_RELOAD=true
+```
+
+### Run Demo/Test Script
+
+To test the YouTube video fetching functionality:
+
+```bash
+cd backend
+python demo.py
+```
+
+This runs a demonstration that:
+
+1. Fetches example videos from YouTube
+2. Stores them in the database
+3. Queries and displays the results
+
+#### Demo Options
+
+```bash
+# Run with demo videos
+python demo.py --demo
+
+# Interactive mode (enter your own URLs)
+python demo.py --interactive
+
+# Fetch specific URLs
+python demo.py URL1 URL2 URL3
+```
+
 ### Fetch Videos from Python Script
 
 ```python
@@ -180,9 +240,12 @@ python create_table.py
 # Test YouTube video CRUD operations
 python youtube_crud.py
 
-# Test YouTube API fetching
+# Test YouTube API fetching and database storage (demo)
 cd ../backend
-python fetch_youtube_videos.py
+python demo.py --demo
+
+# Test the backend API
+python quick_test.py
 ```
 
 ## Supported URL Formats
