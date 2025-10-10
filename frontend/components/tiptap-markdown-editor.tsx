@@ -55,6 +55,7 @@ interface MarkdownStorage {
 }
 
 const getMarkdownFromEditor = (editor: TiptapEditor): string => {
+  // @ts-expect-error - markdown storage is added by tiptap-markdown extension
   return (editor.storage.markdown as MarkdownStorage).getMarkdown();
 };
 
