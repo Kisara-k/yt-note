@@ -3,7 +3,7 @@
 -- ===================================================
 
 -- Create the table
-CREATE TABLE notes (
+CREATE TABLE IF NOT EXISTS notes (
   id BIGSERIAL PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT,
@@ -13,12 +13,12 @@ CREATE TABLE notes (
 -- Enable Row Level Security (RLS)
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Allow all operations for testing" ON notes;
+
 -- Create a policy to allow all operations (for testing)
 -- WARNING: In production, you should have more restrictive policies!
 CREATE POLICY "Allow all operations for testing" ON notes
 FOR ALL 
 USING (true)
 WITH CHECK (true);
-
--- Verify the table was created
-SELECT * FROM notes;

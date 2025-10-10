@@ -4,6 +4,7 @@ Create the notes table directly using psycopg2
 
 import os
 import psycopg2
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -17,34 +18,27 @@ DB_NAME = "postgres"
 DB_USER = "postgres.nkuzhhpjdahuiuysemzg"
 DB_PASSWORD = os.getenv("DB_PASSWORD")  # Add this to your .env file
 
-# SQL to create the notes table
-create_table_sql = """
--- Create the notes table
-CREATE TABLE IF NOT EXISTS notes (
-  id BIGSERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable Row Level Security (RLS)
-ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policy if it exists
-DROP POLICY IF EXISTS "Allow all operations for testing" ON notes;
-
--- Allow all operations (for testing purposes)
-CREATE POLICY "Allow all operations for testing" ON notes
-FOR ALL 
-USING (true)
-WITH CHECK (true);
-"""
+# Read SQL from file
+def read_sql_file():
+    """Read the SQL commands from create_table.sql"""
+    sql_file_path = Path(__file__).parent / "create_table.sql"
+    try:
+        with open(sql_file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"SQL file not found at: {sql_file_path}")
+    except Exception as e:
+        raise Exception(f"Error reading SQL file: {e}")
 
 def create_table():
     """Create the notes table using direct database connection"""
     conn = None
     try:
-        print("� Connecting to Supabase database...")
+        print("🔌 Connecting to Supabase database...")
+        
+        # Read SQL from file
+        create_table_sql = read_sql_file()
+        print("📄 SQL file loaded successfully")
         
         # Connect to the database
         conn = psycopg2.connect(
