@@ -5,10 +5,16 @@ Main entry point to start the FastAPI backend server
 
 import uvicorn
 import os
+import sys
 from dotenv import load_dotenv
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 # Load environment variables
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', '.env')
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db', '.env')
 load_dotenv(env_path)
 
 

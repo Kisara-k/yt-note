@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import re
 
 # Add parent directory to path to import youtube_crud
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'database'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'db'))
 from youtube_crud import create_or_update_video, bulk_create_or_update_videos
 
 # Load environment variables

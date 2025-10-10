@@ -6,8 +6,13 @@ Demonstrates the complete workflow from URL to database
 import sys
 import os
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 # Add paths for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'database'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'db'))
 sys.path.append(os.path.dirname(__file__))
 
 from fetch_youtube_videos import fetch_and_store_videos, fetch_single_video

@@ -30,11 +30,11 @@ A full-stack application for creating and managing markdown notes for YouTube vi
 
 ```bash
 # Python dependencies
-cd database
+cd backend/db
 pip install -r requirements.txt
 
 # Frontend dependencies
-cd ../frontend
+cd ../../frontend
 pnpm install
 ```
 
@@ -58,7 +58,7 @@ BACKEND_URL=http://localhost:8000
 3. **Create database tables**
 
 ```bash
-cd database
+cd backend/db
 python create_table.py
 ```
 
@@ -88,12 +88,12 @@ yt-note/
 │   ├── api.py                    # FastAPI REST API (NEW - Task 2)
 │   ├── fetch_youtube_videos.py   # YouTube API integration
 │   ├── main.py                   # CLI tool
-│   └── test_task2.py            # Test suite (NEW - Task 2)
-├── database/
-│   ├── create_table.sql          # Database schemas (youtube_videos + video_notes)
-│   ├── youtube_crud.py           # Video CRUD operations
-│   ├── video_notes_crud.py       # Note CRUD operations (NEW - Task 2)
-│   └── requirements.txt          # Python dependencies (includes FastAPI)
+│   ├── test_task2.py            # Test suite (NEW - Task 2)
+│   └── db/
+│       ├── create_table.sql          # Database schemas (youtube_videos + video_notes)
+│       ├── youtube_crud.py           # Video CRUD operations
+│       ├── video_notes_crud.py       # Note CRUD operations (NEW - Task 2)
+│       └── requirements.txt          # Python dependencies (includes FastAPI)
 └── frontend/
     ├── app/
     │   ├── api/                  # Next.js API routes (NEW - Task 2)
@@ -178,7 +178,7 @@ print(f"Successfully stored: {results['success']} videos")
 ### Query Videos
 
 ```python
-from database.youtube_crud import (
+from backend.db.youtube_crud import (
     get_all_videos,
     get_video_by_id,
     search_videos_by_tags,
@@ -266,7 +266,7 @@ python backend/main.py URL1 URL2 URL3
 4. Create credentials (API key)
 5. Copy the API key to `.env`
 
-See `database/docs/1 GET_API_KEY.md` for detailed instructions.
+See `backend/db/docs/1 GET_API_KEY.md` for detailed instructions.
 
 ### Get Supabase Credentials
 
@@ -275,7 +275,7 @@ See `database/docs/1 GET_API_KEY.md` for detailed instructions.
 3. Go to Settings > API
 4. Copy URL and anon key to `.env`
 
-See `database/docs/1 SUPABASE_CONNECTION_GUIDE.md` for detailed instructions.
+See `backend/db/docs/1 SUPABASE_CONNECTION_GUIDE.md` for detailed instructions.
 
 ## 🐛 Troubleshooting
 
@@ -295,7 +295,7 @@ Make sure you have created a `.env` file with your YouTube API key.
 
 ### "Table does not exist"
 
-Run `python database/create_table.py` to create the required tables.
+Run `python backend/db/create_table.py` to create the required tables.
 
 ### "Connection refused"
 
@@ -323,7 +323,7 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 
 - [Task 1 - download video data/TASK1_COMPLETE.md](Task%201%20-%20download%20video%20data/TASK1_COMPLETE.md) - Task 1 summary
 - [Task 1 - download video data/SETUP_GUIDE.md](Task%201%20-%20download%20video%20data/SETUP_GUIDE.md) - Setup guide
-- [database/docs/](database/docs/) - Database documentation
+- [backend/db/docs/](backend/db/docs/) - Database documentation
 
 ## 📝 Roadmap
 

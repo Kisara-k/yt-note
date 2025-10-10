@@ -11,15 +11,15 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Add parent directory to path to import from database and backend folders
+# Add parent directory to path to import from db and backend folders
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Load environment variables from the database directory
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', '.env')
+# Load environment variables from the db directory
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db', '.env')
 load_dotenv(env_path)
 
-from database.youtube_crud import create_or_update_video, get_video_by_id
-from database.video_notes_crud import (
+from db.youtube_crud import create_or_update_video, get_video_by_id
+from db.video_notes_crud import (
     create_or_update_note,
     get_note_by_video_id,
     get_all_notes,

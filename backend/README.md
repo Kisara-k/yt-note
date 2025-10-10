@@ -18,7 +18,7 @@ This backend module fetches YouTube video details using the YouTube Data API v3 
 ### 1. Install Dependencies
 
 ```bash
-cd database
+cd backend/db
 pip install -r requirements.txt
 ```
 
@@ -43,7 +43,7 @@ DB_PASSWORD=your_db_password
 Run the table creation script:
 
 ```bash
-cd database
+cd backend/db
 python create_table.py
 ```
 
@@ -148,7 +148,7 @@ python -m uvicorn api:app --reload --host 0.0.0.0 --port 8000
 
 #### Environment Variables (Optional)
 
-You can customize the server by setting environment variables in `database/.env`:
+You can customize the server by setting environment variables in `backend/db/.env`:
 
 ```env
 API_HOST=0.0.0.0
@@ -206,7 +206,7 @@ video = fetch_single_video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 ### CRUD Operations
 
 ```python
-from database.youtube_crud import (
+from backend.db.youtube_crud import (
     get_video_by_id,
     get_all_videos,
     get_videos_by_channel,
@@ -234,14 +234,14 @@ recent = get_recently_updated_videos(hours=24)
 
 ```bash
 # Test database connection and table creation
-cd database
+cd backend/db
 python create_table.py
 
 # Test YouTube video CRUD operations
 python youtube_crud.py
 
 # Test YouTube API fetching and database storage (demo)
-cd ../backend
+cd ..
 python demo.py --demo
 
 # Test the backend API
@@ -335,7 +335,7 @@ Make sure you have created a `.env` file with your YouTube API key.
 
 ### "Table does not exist"
 
-Run `python database/create_table.py` to create the required tables.
+Run `python backend/db/create_table.py` to create the required tables.
 
 ### "Connection refused"
 

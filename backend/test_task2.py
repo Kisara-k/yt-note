@@ -5,12 +5,18 @@ Tests video notes CRUD operations and API functionality
 
 import sys
 import os
+from datetime import datetime
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.youtube_crud import get_video_by_id, create_or_update_video
-from database.video_notes_crud import (
+from db.youtube_crud import get_video_by_id, create_or_update_video
+from db.video_notes_crud import (
     create_or_update_note,
     get_note_by_video_id,
     get_all_notes,
@@ -164,7 +170,8 @@ def test_api_workflow():
     
     # 4. Update note
     print(f"\n4. Update note...")
-    updated_content = note['note_content'] + f"\n\n---\n*Last tested: {os.popen('date').read().strip()}*"
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    updated_content = note['note_content'] + f"\n\n---\n*Last tested: {current_time}*"
     updated_note = create_or_update_note(video_id, updated_content, "test@example.com")
     if updated_note:
         print(f"✓ Note updated successfully")
