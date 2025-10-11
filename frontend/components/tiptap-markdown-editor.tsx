@@ -48,6 +48,7 @@ interface TiptapMarkdownEditorProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  onInitialLoad?: () => void;
 }
 
 interface MarkdownStorage {
@@ -296,7 +297,10 @@ export function TiptapMarkdownEditor({
   onChange,
   className,
   placeholder = 'Start writing...',
+  onInitialLoad,
 }: TiptapMarkdownEditorProps) {
+  const isUpdatingFromProps = React.useRef(false);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -339,8 +343,10 @@ export function TiptapMarkdownEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      const markdown = getMarkdownFromEditor(editor);
-      onChange(markdown);
+      if (!isUpdatingFromProps.current) {
+        const markdown = getMarkdownFromEditor(editor);
+        onChange(markdown);
+      }
     },
   });
 
@@ -349,10 +355,19 @@ export function TiptapMarkdownEditor({
     if (editor) {
       const currentMarkdown = getMarkdownFromEditor(editor);
       if (value !== currentMarkdown) {
+        isUpdatingFromProps.current = true;
         editor.commands.setContent(value);
+        // Clear undo history to prevent undoing back to empty state
+        editor.commands.clearContent();
+        editor.commands.setContent(value);
+        // Reset flag after a short delay to allow the update to complete
+        setTimeout(() => {
+          isUpdatingFromProps.current = false;
+          onInitialLoad?.();
+        }, 0);
       }
     }
-  }, [value, editor]);
+  }, [value, editor, onInitialLoad]);
 
   if (!editor) {
     return null;

@@ -32,6 +32,7 @@ export function VideoNotesEditor() {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [noteContent, setNoteContent] = useState('');
+  const [initialLoadedContent, setInitialLoadedContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -107,6 +108,7 @@ export function VideoNotesEditor() {
       // Wait for note to complete and update
       const loadedNote = await notePromise;
       setNoteContent(loadedNote);
+      setInitialLoadedContent(loadedNote);
 
       if (loadedNote) {
         toast.info('Existing note loaded');
@@ -162,6 +164,7 @@ export function VideoNotesEditor() {
       const savedNote: NoteData = await response.json();
       toast.success('Note saved successfully');
       setHasUnsavedChanges(false);
+      setInitialLoadedContent(noteContent);
     } catch (error) {
       console.error('Error saving note:', error);
       toast.error(
@@ -176,7 +179,8 @@ export function VideoNotesEditor() {
     // Content is already in markdown format from TiptapMarkdownEditor
     setNoteContent(markdown);
     if (videoInfo) {
-      setHasUnsavedChanges(true);
+      // Compare with initial loaded content to determine if there are unsaved changes
+      setHasUnsavedChanges(markdown !== initialLoadedContent);
     }
   };
 
@@ -294,6 +298,7 @@ export function VideoNotesEditor() {
                 onChange={handleEditorChange}
                 className='min-h-[500px]'
                 placeholder='Start writing your notes here...'
+                onInitialLoad={() => setHasUnsavedChanges(false)}
               />
             </div>
 
