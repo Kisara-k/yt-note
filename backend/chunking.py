@@ -10,7 +10,7 @@ from datetime import timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from prompts_config import CHUNK_TARGET_DURATION, CHUNK_MAX_DURATION
+from config import CHUNK_TARGET_DURATION, CHUNK_MAX_DURATION
 
 
 def format_time(seconds: float) -> str:

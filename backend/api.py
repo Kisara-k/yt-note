@@ -33,7 +33,7 @@ from db.subtitle_chunks_crud import (
 )
 from fetch_youtube_videos import fetch_video_details, extract_video_id
 from auth import get_current_user, is_email_verified
-from prompts_config import get_all_prompts, get_prompt_label
+from prompts import get_all_prompts, get_prompt_label
 from background_worker import VideoProcessor
 
 # Initialize FastAPI app

@@ -12,10 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 load_dotenv()
 
-from prompts_config import (
-    get_prompt, PROMPTS, OPENAI_MODEL, 
-    OPENAI_TEMPERATURE, get_max_tokens
-)
+from config import OPENAI_MODEL, OPENAI_TEMPERATURE
+from prompts import get_prompt, PROMPTS, get_max_tokens
 
 try:
     from openai import OpenAI, RateLimitError

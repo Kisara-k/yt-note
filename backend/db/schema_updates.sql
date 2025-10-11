@@ -22,6 +22,21 @@ CREATE INDEX IF NOT EXISTS idx_video_notes_custom_tags ON video_notes USING GIN(
 COMMENT ON COLUMN video_notes.custom_tags IS 'Array of custom tag strings for filtering';
 
 -- ===================================================
+-- 2. Update subtitle_chunks table - Remove timestamp tracking
+-- ===================================================
+
+-- Remove start_time and end_time columns as we now chunk by word count, not time
+ALTER TABLE subtitle_chunks DROP COLUMN IF EXISTS start_time;
+ALTER TABLE subtitle_chunks DROP COLUMN IF EXISTS end_time;
+
+-- Add word_count and sentence_count for better chunk metadata
+ALTER TABLE subtitle_chunks ADD COLUMN IF NOT EXISTS word_count INTEGER;
+ALTER TABLE subtitle_chunks ADD COLUMN IF NOT EXISTS sentence_count INTEGER;
+
+COMMENT ON COLUMN subtitle_chunks.word_count IS 'Number of words in this chunk';
+COMMENT ON COLUMN subtitle_chunks.sentence_count IS 'Number of sentences in this chunk';
+
+-- ===================================================
 -- Summary
 -- ===================================================
 

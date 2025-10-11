@@ -1,22 +1,10 @@
 """
-Configuration for AI enrichment - all hardcoded settings
+AI Prompts for chunk enrichment
+All prompt templates and related functions
 """
 
-# Chunking Configuration - Word-based (not time-based)
-CHUNK_TARGET_WORDS = 1000      # Target words per chunk (~4-5 minutes of speech)
-CHUNK_MAX_WORDS = 1500         # Maximum words per chunk
-CHUNK_OVERLAP_WORDS = 100      # Words to overlap between chunks for context
-CHUNK_MIN_FINAL_WORDS = 500    # Minimum words for final chunk (otherwise merge with previous)
+from config import OPENAI_MAX_TOKENS_TITLE, OPENAI_MAX_TOKENS_OTHER
 
-# Legacy time-based config (deprecated, kept for backward compatibility)
-CHUNK_TARGET_DURATION = 2400.0  # 40 minutes in seconds
-CHUNK_MAX_DURATION = 3600.0     # 60 minutes in seconds (final chunk can be up to this)
-
-# OpenAI Configuration
-OPENAI_MODEL = "gpt-4.1-nano"  # Using gpt-4o-mini as gpt-4.1-nano doesn't exist yet
-OPENAI_MAX_TOKENS_TITLE = 50
-OPENAI_MAX_TOKENS_OTHER = 500
-OPENAI_TEMPERATURE = 0.7
 
 # AI Prompts for chunk enrichment
 PROMPTS = {
@@ -67,22 +55,26 @@ Provide a comma-separated list of 3-5 topics or themes.'''
 
 
 def get_prompt(field_name: str, chunk_text: str) -> str:
+    """Get formatted prompt for a specific field"""
     if field_name not in PROMPTS:
         raise ValueError(f"Unknown field name: {field_name}")
     return PROMPTS[field_name]['template'].format(chunk_text=chunk_text)
 
 
 def get_all_prompts() -> dict:
+    """Get all prompt configurations"""
     return PROMPTS.copy()
 
 
 def get_prompt_label(field_name: str) -> str:
+    """Get the label for a specific prompt field"""
     if field_name not in PROMPTS:
         return field_name
     return PROMPTS[field_name]['label']
 
 
 def get_max_tokens(field_name: str) -> int:
+    """Get max tokens for a specific prompt field"""
     if field_name not in PROMPTS:
         return OPENAI_MAX_TOKENS_OTHER
     return PROMPTS[field_name]['max_tokens']
