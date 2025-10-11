@@ -2,17 +2,27 @@
 
 A full-stack application for creating and managing markdown notes for YouTube videos. Enter a video URL, and the app will fetch video information and let you write notes using a powerful TipTap markdown editor.
 
-## ✨ New: Task 2 Complete!
+## 🔐 Authentication Required
 
-**Single-user web app is now live!** 🎉
+**The app now requires secure login via Supabase!** 🔒
 
+- ✅ Secure authentication with JWT tokens
+- ✅ Only verified emails can access (hardcoded whitelist)
+- ✅ No user emails stored in database
+- ✅ Session management with automatic token refresh
+
+**Authentication Setup**: See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for complete setup guide!
+
+## ✨ Features
+
+**Web Application** 🎉
+
+- ✅ Secure login/signup with Supabase Auth
 - ✅ Enter YouTube video URL or ID
 - ✅ Auto-fetch video info (title, channel, stats)
 - ✅ Create markdown notes with TipTap editor
 - ✅ Auto-save notes to database
 - ✅ Load existing notes automatically
-
-**Quick Start**: See [QUICK_START_TASK2.md](QUICK_START_TASK2.md) for 5-minute setup!
 
 ## 🚀 Quick Start
 
@@ -21,54 +31,78 @@ A full-stack application for creating and managing markdown notes for YouTube vi
 - Python 3.8+
 - Node.js 18+
 - pnpm
-- Supabase account
+- Supabase account with Email Auth enabled
 - YouTube Data API v3 key
 
-### Setup (5 minutes)
+### Setup (10 minutes)
+
+> **⚠️ Important**: Authentication is now required. See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for detailed setup.
 
 1. **Install dependencies**
 
 ```bash
-# Python dependencies
+# Python dependencies (includes pyjwt for auth)
 cd backend/db
 pip install -r requirements.txt
 
-# Frontend dependencies
+# Frontend dependencies (includes @supabase/supabase-js)
 cd ../../frontend
 pnpm install
 ```
 
 2. **Configure environment**
 
-Create `.env` in root:
+Create `backend/db/.env`:
 
 ```env
 YOUTUBE_API_KEY=your_youtube_api_key_here
 SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-DB_PASSWORD=your_db_password
+SUPABASE_KEY=your_supabase_service_role_key
+SUPABASE_JWT_SECRET=your_jwt_secret
+API_HOST=0.0.0.0
+API_PORT=8000
+API_RELOAD=true
 ```
 
 Create `frontend/.env.local`:
 
 ```env
-BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-3. **Create database tables**
+3. **Configure verified emails**
+
+Edit `backend/config.py` to add authorized email addresses:
+
+```python
+VERIFIED_EMAILS = [
+    "your-email@example.com",
+    # Add more emails as needed
+]
+```
+
+4. **Create database tables**
 
 ```bash
 cd backend/db
 python create_table.py
 ```
 
-4. **Run the application**
+5. **Enable Supabase Email Auth**
+
+- Go to your Supabase dashboard
+- Navigate to Authentication > Providers
+- Enable Email provider
+- Create user accounts for verified emails
+
+6. **Run the application**
 
 **Terminal 1 - Backend API:**
 
 ```bash
 cd backend
-python -m uvicorn api:app --reload --host 0.0.0.0 --port 8000
+python main.py
 ```
 
 **Terminal 2 - Frontend:**
@@ -78,38 +112,54 @@ cd frontend
 pnpm dev
 ```
 
-Open http://localhost:3000 and start taking notes! 🎉
+7. **Sign in and start taking notes!**
+
+- Open http://localhost:3000
+- Sign in with a verified email account
+- Start creating notes for your favorite videos! 🎉
 
 ## 📁 Project Structure
 
 ```
 yt-note/
 ├── backend/
-│   ├── api.py                    # FastAPI REST API (NEW - Task 2)
+│   ├── config.py                  # Verified emails list (NEW - Auth)
+│   ├── auth.py                    # Authentication middleware (NEW - Auth)
+│   ├── api.py                     # FastAPI REST API with auth
 │   ├── fetch_youtube_videos.py   # YouTube API integration
-│   ├── main.py                   # CLI tool
-│   ├── test_task2.py            # Test suite (NEW - Task 2)
+│   ├── main.py                    # Server entry point
 │   └── db/
-│       ├── create_table.sql          # Database schemas (youtube_videos + video_notes)
-│       ├── youtube_crud.py           # Video CRUD operations
-│       ├── video_notes_crud.py       # Note CRUD operations (NEW - Task 2)
-│       └── requirements.txt          # Python dependencies (includes FastAPI)
+│       ├── create_table.sql       # Database schemas
+│       ├── update_schema.sql      # Auth migration (NEW - Auth)
+│       ├── youtube_crud.py        # Video CRUD operations
+│       ├── video_notes_crud.py    # Note CRUD (no user_email)
+│       └── requirements.txt       # Python dependencies (includes pyjwt)
 └── frontend/
+    ├── lib/
+    │   └── auth-context.tsx       # Auth context provider (NEW - Auth)
     ├── app/
-    │   ├── api/                  # Next.js API routes (NEW - Task 2)
-    │   │   ├── video/
-    │   │   └── note/
-    │   ├── layout.tsx
-    │   └── page.tsx              # Main app page
+    │   ├── layout.tsx             # With AuthProvider (NEW - Auth)
+    │   └── page.tsx               # Auth-protected main page (NEW - Auth)
     ├── components/
-    │   ├── video-notes-editor.tsx  # Main UI component (NEW - Task 2)
-    │   └── ui/                     # TipTap editor & UI components
-    └── .env.local                  # Frontend config
+    │   ├── login-form.tsx         # Login/signup UI (NEW - Auth)
+    │   ├── video-notes-editor.tsx # Main UI with auth tokens
+    │   └── ui/                    # TipTap editor & UI components
+    ├── package.json               # Includes @supabase/supabase-js
+    └── .env.local                 # Frontend config (Supabase)
 ```
 
 ## 🎯 Features
 
-### Task 2: Single-User Web App ✅
+### Authentication & Security ✅
+
+- ✅ **Secure Login**: JWT-based authentication via Supabase
+- ✅ **Email Verification**: Only whitelisted emails can access
+- ✅ **Session Management**: Automatic token refresh
+- ✅ **Protected API**: All endpoints require valid authentication
+- ✅ **No Email Storage**: User emails not stored in database
+- ✅ **Sign Out**: Secure session termination
+
+### Web Application ✅
 
 - ✅ **Video Input**: Enter YouTube URL or video ID
 - ✅ **Smart Fetching**: Checks database first, fetches from YouTube API if needed
@@ -134,10 +184,12 @@ yt-note/
 ### Backend API
 
 - ✅ FastAPI REST API with OpenAPI docs
+- ✅ JWT authentication middleware
+- ✅ Email whitelist verification
 - ✅ CORS configured for frontend
 - ✅ Request/response validation
-- ✅ Error handling
-- ✅ 4 main endpoints (video fetch, note CRUD)
+- ✅ Error handling with proper status codes
+- ✅ Protected endpoints requiring authentication
 
 ### Database Schema
 
@@ -154,9 +206,12 @@ The `youtube_videos` table stores:
 ### Frontend
 
 - Modern Next.js 15 app
+- Supabase authentication integration
+- React Context for auth state management
 - TipTap markdown editor
 - Responsive UI with Tailwind CSS
 - shadcn/ui components
+- Protected routes with auth checks
 
 ## 📚 Usage Examples
 
@@ -212,6 +267,35 @@ python backend/main.py URL1 URL2 URL3
 ```
 
 ## 🔧 API Reference
+
+### Authentication
+
+All protected endpoints require an `Authorization: Bearer <token>` header.
+
+**New Endpoints:**
+
+- `POST /api/auth/verify-email` - Check if email is in verified list (public)
+
+**Protected Endpoints:**
+
+- `POST /api/video` - Fetch video information (requires auth)
+- `GET /api/note/{video_id}` - Get note for video (requires auth)
+- `POST /api/note` - Save note (requires auth)
+- `GET /api/notes` - Get all notes (requires auth)
+
+**Example Request:**
+
+```javascript
+const token = await getAccessToken(); // From auth context
+const response = await fetch('/api/video', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({ video_url: 'https://...' }),
+});
+```
 
 ### YouTube Data Fetching
 
@@ -273,21 +357,55 @@ See `backend/db/docs/1 GET_API_KEY.md` for detailed instructions.
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
 2. Create a new project or select existing
 3. Go to Settings > API
-4. Copy URL and anon key to `.env`
+4. Copy the following to your `.env` files:
 
-See `backend/db/docs/1 SUPABASE_CONNECTION_GUIDE.md` for detailed instructions.
+   - **URL**: Project URL (both backend and frontend)
+   - **Anon Key**: For frontend (`NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+   - **Service Role Key**: For backend (`SUPABASE_KEY`)
+   - **JWT Secret**: For backend token validation (`SUPABASE_JWT_SECRET`)
+
+5. Enable Email Authentication:
+   - Go to Authentication > Providers
+   - Enable Email provider
+   - Configure email templates (optional)
+
+See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for detailed instructions.
 
 ## 🐛 Troubleshooting
 
-### Backend won't start (Task 2)
+### "Email is not authorized"
 
-Make sure you have installed FastAPI: `pip install fastapi uvicorn pydantic`
+Your email is not in the verified list. Add it to `backend/config.py`:
+
+```python
+VERIFIED_EMAILS = [
+    "your-email@example.com",
+]
+```
+
+### "Invalid or expired token"
+
+- Sign out and sign back in
+- Check that `SUPABASE_JWT_SECRET` is correctly set in backend `.env`
+- Verify Supabase project is active
+
+### Frontend login page not working
+
+- Ensure `@supabase/supabase-js` is installed: `pnpm install`
+- Check `frontend/.env.local` has correct Supabase URL and anon key
+- Verify Email Auth is enabled in Supabase dashboard
+
+### Backend authentication errors
+
+- Ensure `pyjwt` is installed: `pip install pyjwt`
+- Check `backend/db/.env` has all required Supabase credentials
+- Verify service role key (not anon key) is used in backend
 
 ### Frontend can't connect to backend
 
 - Check backend is running on port 8000
-- Verify `frontend/.env.local` has `BACKEND_URL=http://localhost:8000`
-- Check browser console for CORS errors
+- Verify CORS settings in `backend/api.py`
+- Check browser console for CORS or auth errors
 
 ### "YOUTUBE_API_KEY not found"
 
@@ -308,18 +426,25 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 ### Video notes not saving
 
 - Make sure backend API is running
+- Verify you're signed in (check for auth token)
 - Check that `video_notes` table exists (run `create_table.py`)
 - Ensure the video exists in `youtube_videos` table first
+- Check browser console for authentication errors
 
 ## 📚 Documentation
 
-### Task 2 (Web App)
+### Authentication
+
+- **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Complete authentication setup guide
+- [backend/config.py](backend/config.py) - Verified emails configuration
+- [backend/auth.py](backend/auth.py) - Authentication middleware
+
+### Web App Implementation
 
 - [TASK2_SUMMARY.md](TASK2_SUMMARY.md) - Implementation overview
 - [TASK2_IMPLEMENTATION.md](TASK2_IMPLEMENTATION.md) - Detailed guide
-- [QUICK_START_TASK2.md](QUICK_START_TASK2.md) - 5-minute quick start
 
-### Task 1 (YouTube API)
+### YouTube API Integration
 
 - [Task 1 - download video data/TASK1_COMPLETE.md](Task%201%20-%20download%20video%20data/TASK1_COMPLETE.md) - Task 1 summary
 - [Task 1 - download video data/SETUP_GUIDE.md](Task%201%20-%20download%20video%20data/SETUP_GUIDE.md) - Setup guide
@@ -338,11 +463,17 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 - [x] Task 2: Save and load notes
 - [x] Task 2: FastAPI backend
 - [x] Task 2: Next.js frontend
+- [x] **Authentication: Supabase Auth integration** ⭐ NEW
+- [x] **Authentication: Email whitelist verification** ⭐ NEW
+- [x] **Authentication: JWT token validation** ⭐ NEW
+- [x] **Authentication: Protected API endpoints** ⭐ NEW
+- [x] **Security: No email storage in database** ⭐ NEW
 
 ### Future Enhancements 🚀
 
-- [ ] User authentication (Google OAuth)
-- [ ] Multi-user support
+- [ ] Google OAuth integration
+- [ ] Password reset flow
+- [ ] Email verification flow
 - [ ] Dashboard with all notes
 - [ ] Search and filter notes
 - [ ] Categories/tags for notes

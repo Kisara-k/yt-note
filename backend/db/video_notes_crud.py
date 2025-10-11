@@ -19,7 +19,7 @@ key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 
-def create_or_update_note(video_id: str, note_content: str, user_email: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def create_or_update_note(video_id: str, note_content: str) -> Optional[Dict[str, Any]]:
     """
     Create a new note or update existing one for a video
     Uses upsert to handle both create and update operations
@@ -27,7 +27,6 @@ def create_or_update_note(video_id: str, note_content: str, user_email: Optional
     Args:
         video_id: YouTube video ID
         note_content: Markdown content of the note
-        user_email: Email of the user (optional, for future multi-user support)
         
     Returns:
         Created/updated note record or None on error
@@ -35,8 +34,7 @@ def create_or_update_note(video_id: str, note_content: str, user_email: Optional
     try:
         note_data = {
             'video_id': video_id,
-            'note_content': note_content,
-            'user_email': user_email
+            'note_content': note_content
         }
         
         response = supabase.table("video_notes").upsert(
@@ -79,12 +77,11 @@ def get_note_by_video_id(video_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_all_notes(user_email: Optional[str] = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+def get_all_notes(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
     """
-    Get all notes, optionally filtered by user email
+    Get all notes
     
     Args:
-        user_email: Filter by user email (optional)
         limit: Maximum number of records to return
         offset: Number of records to skip
         
@@ -93,9 +90,6 @@ def get_all_notes(user_email: Optional[str] = None, limit: int = 50, offset: int
     """
     try:
         query = supabase.table("video_notes").select("*")
-        
-        if user_email:
-            query = query.eq("user_email", user_email)
         
         response = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
         
@@ -106,13 +100,12 @@ def get_all_notes(user_email: Optional[str] = None, limit: int = 50, offset: int
         return []
 
 
-def get_notes_with_video_info(user_email: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+def get_notes_with_video_info(limit: int = 50) -> List[Dict[str, Any]]:
     """
     Get all notes with associated video information
     Uses a JOIN to combine video_notes and youtube_videos tables
     
     Args:
-        user_email: Filter by user email (optional)
         limit: Maximum number of records to return
         
     Returns:
@@ -121,12 +114,9 @@ def get_notes_with_video_info(user_email: Optional[str] = None, limit: int = 50)
     try:
         # Select note fields and join with video info
         query = supabase.table("video_notes").select(
-            "video_id, note_content, user_email, created_at, updated_at, "
+            "video_id, note_content, created_at, updated_at, "
             "youtube_videos(title, channel_title, published_at)"
         )
-        
-        if user_email:
-            query = query.eq("user_email", user_email)
         
         response = query.order("updated_at", desc=True).limit(limit).execute()
         
@@ -169,7 +159,7 @@ if __name__ == "__main__":
     test_note = "# Test Note\n\nThis is a test markdown note for the video."
     
     print("\n1. Creating/Updating a note:")
-    note = create_or_update_note(test_video_id, test_note, "test@example.com")
+    note = create_or_update_note(test_video_id, test_note)
     if note:
         print(f"   Note saved: {note}")
     

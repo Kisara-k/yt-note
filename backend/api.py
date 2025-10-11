@@ -26,6 +26,8 @@ from db.video_notes_crud import (
     get_notes_with_video_info
 )
 from backend.fetch_youtube_videos import fetch_video_details, extract_video_id
+from backend.auth import get_current_user
+from backend.config import is_email_verified
 
 # Initialize FastAPI app
 app = FastAPI(title="YouTube Notes API", version="1.0.0")
@@ -60,15 +62,27 @@ class VideoResponse(BaseModel):
 class NoteRequest(BaseModel):
     video_id: str
     note_content: str
-    user_email: Optional[str] = None
 
 
 class NoteResponse(BaseModel):
     video_id: str
     note_content: str
-    user_email: Optional[str] = None
     created_at: str
     updated_at: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class VerifyEmailRequest(BaseModel):
+    email: str
+
+
+class VerifyEmailResponse(BaseModel):
+    is_verified: bool
+    message: str
 
 
 # API Endpoints
@@ -78,8 +92,28 @@ async def root():
     return {"message": "YouTube Notes API", "version": "1.0.0"}
 
 
+@app.post("/api/auth/verify-email", response_model=VerifyEmailResponse)
+async def verify_email(request: VerifyEmailRequest):
+    """
+    Verify if an email is in the allowed list
+    This can be called before attempting Supabase authentication
+    """
+    is_verified = is_email_verified(request.email)
+    
+    if is_verified:
+        return VerifyEmailResponse(
+            is_verified=True,
+            message="Email is verified and can access the application"
+        )
+    else:
+        return VerifyEmailResponse(
+            is_verified=False,
+            message="Email is not authorized to access this application"
+        )
+
+
 @app.post("/api/video", response_model=VideoResponse)
-async def get_video(request: VideoRequest):
+async def get_video(request: VideoRequest, current_user: dict = Depends(get_current_user)):
     """
     Get video information by URL or ID
     Fetches from database if exists, otherwise calls YouTube API
@@ -129,10 +163,11 @@ async def get_video(request: VideoRequest):
 
 
 @app.get("/api/note/{video_id}")
-async def get_note(video_id: str):
+async def get_note(video_id: str, current_user: dict = Depends(get_current_user)):
     """
     Get note for a specific video
     Returns None if no note exists
+    Requires authentication
     """
     try:
         note = get_note_by_video_id(video_id)
@@ -144,15 +179,15 @@ async def get_note(video_id: str):
 
 
 @app.post("/api/note", response_model=NoteResponse)
-async def save_note(request: NoteRequest):
+async def save_note(request: NoteRequest, current_user: dict = Depends(get_current_user)):
     """
     Create or update a note for a video
+    Requires authentication
     """
     try:
         note = create_or_update_note(
             video_id=request.video_id,
-            note_content=request.note_content,
-            user_email=request.user_email
+            note_content=request.note_content
         )
         
         if not note:
@@ -161,7 +196,6 @@ async def save_note(request: NoteRequest):
         return NoteResponse(
             video_id=note['video_id'],
             note_content=note['note_content'],
-            user_email=note.get('user_email'),
             created_at=note['created_at'],
             updated_at=note['updated_at']
         )
@@ -174,13 +208,13 @@ async def save_note(request: NoteRequest):
 
 
 @app.get("/api/notes")
-async def get_notes(user_email: Optional[str] = None, limit: int = 50):
+async def get_notes(limit: int = 50, current_user: dict = Depends(get_current_user)):
     """
     Get all notes with video information
-    Optionally filter by user email
+    Requires authentication
     """
     try:
-        notes = get_notes_with_video_info(user_email=user_email, limit=limit)
+        notes = get_notes_with_video_info(limit=limit)
         return {"notes": notes, "count": len(notes)}
         
     except Exception as e:

@@ -131,7 +131,7 @@ CREATE TABLE video_notes (
     note_content TEXT,
     
     -- User email (for future multi-user support)
-    user_email VARCHAR(255),
+    -- user_email VARCHAR(255),
     
     -- Automatic timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),

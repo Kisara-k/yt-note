@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Save, Video, Loader2 } from 'lucide-react';
+import { Save, Video, Loader2, LogOut } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 interface VideoInfo {
   video_id: string;
@@ -23,7 +24,6 @@ interface VideoInfo {
 interface NoteData {
   video_id: string;
   note_content: string | null;
-  user_email?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -35,6 +35,16 @@ export function VideoNotesEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { user, signOut, getAccessToken } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success('Signed out successfully');
+    } catch (error) {
+      toast.error('Failed to sign out');
+    }
+  };
 
   const handleFetchVideo = async () => {
     if (!videoUrl.trim()) {
@@ -44,22 +54,43 @@ export function VideoNotesEditor() {
 
     setLoading(true);
     try {
-      // Fetch video info
-      const videoResponse = await fetch('/api/video', {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch video info from backend
+      const videoResponse = await fetch('http://localhost:8000/api/video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ video_url: videoUrl }),
       });
 
       if (!videoResponse.ok) {
         const error = await videoResponse.json();
-        throw new Error(error.error || 'Failed to fetch video');
+        const errorMessage =
+          typeof error.detail === 'string'
+            ? error.detail
+            : error.error || error.message || 'Failed to fetch video';
+        throw new Error(errorMessage);
       }
 
       const videoData: VideoInfo = await videoResponse.json();
 
       // Start note fetch immediately after getting video_id (parallel processing)
-      const notePromise = fetch(`/api/note/${videoData.video_id}`)
+      const notePromise = fetch(
+        `http://localhost:8000/api/note/${videoData.video_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
         .then(async (response) => {
           if (response.ok) {
             const noteData: NoteData = await response.json();
@@ -100,19 +131,32 @@ export function VideoNotesEditor() {
 
     setSaving(true);
     try {
-      const response = await fetch('/api/note', {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        setSaving(false);
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/api/note', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           video_id: videoInfo.video_id,
           note_content: noteContent,
-          user_email: 'default@user.com', // For single-user mode
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to save note');
+        const errorMessage =
+          typeof error.detail === 'string'
+            ? error.detail
+            : error.error || error.message || 'Failed to save note';
+        throw new Error(errorMessage);
       }
 
       const savedNote: NoteData = await response.json();
@@ -145,11 +189,22 @@ export function VideoNotesEditor() {
   return (
     <div className='min-h-screen bg-background'>
       <div className='container mx-auto p-6 max-w-6xl'>
-        <div className='mb-8'>
-          <h1 className='text-3xl font-bold mb-2'>YouTube Notes</h1>
-          <p className='text-muted-foreground'>
-            Enter a YouTube video URL or ID to create notes
-          </p>
+        <div className='mb-8 flex justify-between items-center'>
+          <div>
+            <h1 className='text-3xl font-bold mb-2'>YouTube Notes</h1>
+            <p className='text-muted-foreground'>
+              Enter a YouTube video URL or ID to create notes
+            </p>
+          </div>
+          <div className='flex items-center gap-4'>
+            <div className='text-sm text-muted-foreground'>
+              Signed in as <strong>{user?.email}</strong>
+            </div>
+            <Button variant='outline' size='sm' onClick={handleSignOut}>
+              <LogOut className='mr-2 h-4 w-4' />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Video URL Input */}

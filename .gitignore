@@ -3,6 +3,10 @@
 .env.local
 .env.production
 
+# ===== VERIFIED EMAILS (Security) =====
+.verified_emails
+backend/.verified_emails
+
 # ===== PYTHON =====
 __pycache__/
 *.py[cod]
