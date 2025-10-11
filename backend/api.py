@@ -319,6 +319,16 @@ async def process_video_no_auth(request: VideoRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/test/chunks/{video_id}/index")
+async def get_video_chunk_index_no_auth(video_id: str):
+    """TEST: Get chunk index without auth"""
+    try:
+        index = get_chunk_index(video_id)
+        return {"video_id": video_id, "index": index, "count": len(index)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/prompts")
 async def get_prompts(current_user: dict = Depends(get_current_user)):
     """Get prompt configurations"""

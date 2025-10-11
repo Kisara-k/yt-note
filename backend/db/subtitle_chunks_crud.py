@@ -22,8 +22,6 @@ def create_chunk(
     video_id: str,
     chunk_id: int,
     chunk_text: str,
-    word_count: int,
-    sentence_count: int,
     short_title: Optional[str] = None,
     ai_field_1: Optional[str] = None,
     ai_field_2: Optional[str] = None,
@@ -36,8 +34,8 @@ def create_chunk(
         video_id: YouTube video ID
         chunk_id: Chunk identifier (0-indexed)
         chunk_text: Full text content of the chunk
-        word_count: Number of words in chunk
-        sentence_count: Number of sentences in chunk
+        word_count: Number of words in chunk (NOT saved to database)
+        sentence_count: Number of sentences in chunk (NOT saved to database)
         short_title: AI-generated short title (optional)
         ai_field_1: AI field 1 (optional)
         ai_field_2: AI field 2 (optional)
@@ -47,12 +45,12 @@ def create_chunk(
         Created chunk record or None on error
     """
     try:
+        # NOTE: word_count and sentence_count are NOT saved to database
+        # start_time and end_time are legacy columns - we set them to 0 as placeholders
         chunk_data = {
             'video_id': video_id,
             'chunk_id': chunk_id,
             'chunk_text': chunk_text,
-            'word_count': word_count,
-            'sentence_count': sentence_count,
             'short_title': short_title,
             'ai_field_1': ai_field_1,
             'ai_field_2': ai_field_2,
