@@ -4,8 +4,9 @@
 .env.production
 
 # ===== VERIFIED EMAILS (Security) =====
-.verified_emails
-backend/.verified_emails
+*/.verified_emails
+backend/auth/.verified_emails
+**/.verified_emails
 
 # ===== PYTHON =====
 __pycache__/

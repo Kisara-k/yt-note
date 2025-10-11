@@ -3,20 +3,20 @@ FastAPI backend for YouTube Notes application
 Provides API endpoints for fetching video data and managing notes
 """
 
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 import os
 import sys
 from dotenv import load_dotenv
 
+# Load environment variables FIRST before any other imports
+load_dotenv()
+
 # Add parent directory to path to import from db and backend folders
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Load environment variables from the db directory
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db', '.env')
-load_dotenv(env_path)
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 
 from db.youtube_crud import create_or_update_video, get_video_by_id
 from db.video_notes_crud import (
@@ -25,9 +25,8 @@ from db.video_notes_crud import (
     get_all_notes,
     get_notes_with_video_info
 )
-from backend.fetch_youtube_videos import fetch_video_details, extract_video_id
-from backend.auth import get_current_user
-from backend.config import is_email_verified
+from fetch_youtube_videos import fetch_video_details, extract_video_id
+from auth import get_current_user, is_email_verified
 
 # Initialize FastAPI app
 app = FastAPI(title="YouTube Notes API", version="1.0.0")

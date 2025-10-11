@@ -73,12 +73,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 3. **Configure verified emails**
 
-Edit `backend/config.py` to add authorized email addresses:
+Edit `backend/auth/config.py` to add authorized email addresses:
 
 ```python
-VERIFIED_EMAILS = [
-    "your-email@example.com",
-    # Add more emails as needed
+VERIFIED_EMAIL_HASHES = [
+    "your-email-hash-here",
+    # Add more email hashes as needed
 ]
 ```
 
@@ -123,8 +123,12 @@ pnpm dev
 ```
 yt-note/
 ├── backend/
-│   ├── config.py                  # Verified emails list (NEW - Auth)
-│   ├── auth.py                    # Authentication middleware (NEW - Auth)
+│   ├── auth/                      # Authentication module (NEW - Auth)
+│   │   ├── __init__.py            # Module exports
+│   │   ├── config.py              # Verified email hashes
+│   │   ├── middleware.py          # JWT verification & email whitelist
+│   │   ├── manage_verified_emails.py  # Helper script for managing hashes
+│   │   └── .verified_emails       # Reference file (gitignored)
 │   ├── api.py                     # FastAPI REST API with auth
 │   ├── fetch_youtube_videos.py   # YouTube API integration
 │   ├── main.py                    # Server entry point
@@ -436,8 +440,8 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 ### Authentication
 
 - **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Complete authentication setup guide
-- [backend/config.py](backend/config.py) - Verified emails configuration
-- [backend/auth.py](backend/auth.py) - Authentication middleware
+- [backend/auth/config.py](backend/auth/config.py) - Verified email hashes configuration
+- [backend/auth/middleware.py](backend/auth/middleware.py) - Authentication middleware
 
 ### Web App Implementation
 

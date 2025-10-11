@@ -1,5 +1,5 @@
 """
-Application Configuration
+Authentication Configuration
 Stores SHA-256 hashes of verified emails that are allowed to access the application
 
 Security Note:

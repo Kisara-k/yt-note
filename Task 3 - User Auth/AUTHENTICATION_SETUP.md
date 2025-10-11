@@ -6,7 +6,7 @@ The application now requires authentication via Supabase. Only verified emails (
 
 ## Key Changes
 
-- **Email Verification**: Users must have their email address in the verified list (`backend/config.py`)
+- **Email Verification**: Users must have their email hash in the verified list (`backend/auth/config.py`)
 - **Secure Authentication**: JWT-based authentication using Supabase Auth
 - **No Email Storage**: User emails are NOT stored in the `video_notes` table
 - **Session Management**: Frontend maintains authentication state using React Context
@@ -58,13 +58,31 @@ Or use the provided migration file:
 
 #### Configure Verified Emails
 
-Edit `backend/config.py` to add/remove authorized emails:
+Use the `backend/auth/manage_verified_emails.py` helper script to manage authorized emails:
+
+```bash
+cd backend/auth
+python manage_verified_emails.py
+```
+
+This script allows you to:
+
+- Add verified emails (generates SHA-256 hashes automatically)
+- Remove verified emails
+- List all verified emails
+- Generate hash for testing
+
+The script stores hashes in `backend/auth/config.py` and maintains a reference file at `backend/auth/.verified_emails` (gitignored for security).
+
+**Manual Configuration:**
+
+Edit `backend/auth/config.py` to manually add/remove SHA-256 email hashes:
 
 ```python
-VERIFIED_EMAILS = [
-    "admin@example.com",
-    "user1@example.com",
-    # Add your email here
+VERIFIED_EMAIL_HASHES = [
+    "hash1_for_admin@example.com",
+    "hash2_for_user1@example.com",
+    # Add your email hash here
 ]
 ```
 
@@ -185,18 +203,21 @@ const response = await fetch('/api/video', {
 
 ## Security Notes
 
-1. **Verified Email List**: Only emails in `backend/config.py` can access the app
-2. **JWT Validation**: Backend validates tokens on every request
+1. **Verified Email Hashes**: Only email hashes in `backend/auth/config.py` can access the app
+2. **JWT Validation**: Backend validates tokens on every request using `backend/auth/middleware.py`
 3. **No Email in Database**: User emails are not stored in `video_notes` table
-4. **Secure Keys**: Keep `SUPABASE_JWT_SECRET` and service role keys private
-5. **Environment Files**: Never commit `.env` or `.env.local` files to git
+4. **SHA-256 Hashing**: Emails are hashed using SHA-256 before comparison
+5. **Secure Keys**: Keep `SUPABASE_JWT_SECRET` and service role keys private
+6. **Environment Files**: Never commit `.env` or `.env.local` files to git
+7. **Reference File**: `backend/auth/.verified_emails` is gitignored and only exists locally
 
 ## Troubleshooting
 
 ### "Email is not authorized"
 
-- Check if your email is in `backend/config.py` VERIFIED_EMAILS list
-- Email comparison is case-insensitive
+- Check if your email hash is in `backend/auth/config.py` VERIFIED_EMAIL_HASHES list
+- Use `backend/auth/manage_verified_emails.py` to verify/add your email
+- Email hashing is case-sensitive (lowercase recommended)
 
 ### "Invalid or expired token"
 

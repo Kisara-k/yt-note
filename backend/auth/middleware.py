@@ -3,17 +3,16 @@ Authentication middleware for FastAPI
 Handles Supabase JWT token verification and email validation
 """
 
-from fastapi import HTTPException, Header, Depends
+from fastapi import HTTPException, Header
 from typing import Optional
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
-from backend.config import is_email_verified
+from .config import is_email_verified
 import jwt
 
-# Load environment variables
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend', 'db', '.env')
-load_dotenv(env_path)
+# Load environment variables from backend/.env (searches up the directory tree)
+load_dotenv()
 
 # Initialize Supabase client
 url: str = os.getenv("SUPABASE_URL")
