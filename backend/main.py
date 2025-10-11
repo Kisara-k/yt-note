@@ -13,8 +13,9 @@ if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-# Load environment variables
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db', '.env')
+# Load environment variables from root directory
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(root_dir, '.env')
 load_dotenv(env_path)
 
 

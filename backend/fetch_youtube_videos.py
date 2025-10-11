@@ -84,7 +84,7 @@ def fetch_video_details(video_ids: List[str]) -> Optional[List[Dict[str, Any]]]:
         # Join video IDs with commas
         video_ids_str = ','.join(video_ids)
         
-        print(f"📡 Fetching details for {len(video_ids)} video(s)...")
+        print(f"[API->] YouTube Data API: videos.list(ids={len(video_ids)})")
         
         # Make API request
         request = youtube.videos().list(
@@ -96,18 +96,18 @@ def fetch_video_details(video_ids: List[str]) -> Optional[List[Dict[str, Any]]]:
         videos = response.get('items', [])
         
         if not videos:
-            print(f"⚠️  No videos found for the provided IDs")
+            print(f"[API<-] YouTube: No videos found")
             return []
         
-        print(f"✅ Successfully fetched {len(videos)} video(s)")
+        print(f"[API<-] YouTube: Retrieved {len(videos)} video(s)")
         
         return videos
         
     except HttpError as e:
-        print(f"❌ YouTube API Error: {e}")
+        print(f"[API!!] YouTube API: {str(e)}")
         return None
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[API!!] {str(e)}")
         return None
 
 

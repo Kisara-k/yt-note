@@ -18,14 +18,18 @@ key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 
-def create_or_update_note(video_id: str, note_content: str) -> Optional[Dict[str, Any]]:
+def create_or_update_note(
+    video_id: str, 
+    note_content: str, 
+    custom_tags: Optional[List[str]] = None
+) -> Optional[Dict[str, Any]]:
     """
     Create a new note or update existing one for a video
-    Uses upsert to handle both create and update operations
     
     Args:
         video_id: YouTube video ID
         note_content: Markdown content of the note
+        custom_tags: List of custom tag strings
         
     Returns:
         Created/updated note record or None on error
@@ -33,23 +37,25 @@ def create_or_update_note(video_id: str, note_content: str) -> Optional[Dict[str
     try:
         note_data = {
             'video_id': video_id,
-            'note_content': note_content
+            'note_content': note_content,
+            'custom_tags': custom_tags or []
         }
         
+        print(f"[DB->] UPSERT video_notes (video_id={video_id}, content_len={len(note_content)}, tags={len(custom_tags or [])})")
         response = supabase.table("video_notes").upsert(
             note_data,
             on_conflict='video_id'
         ).execute()
         
         if response.data and len(response.data) > 0:
-            print(f"✓ Note saved for video: {video_id}")
+            print(f"[DB<-] Note saved for video: {video_id}")
             return response.data[0]
         else:
-            print(f"✗ Failed to save note for video: {video_id}")
+            print(f"[DB!!] Failed to save note for video: {video_id}")
             return None
             
     except Exception as e:
-        print(f"Error saving note: {str(e)}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 
@@ -64,15 +70,18 @@ def get_note_by_video_id(video_id: str) -> Optional[Dict[str, Any]]:
         Note record or None if not found
     """
     try:
+        print(f"[DB->] SELECT video_notes WHERE video_id={video_id}")
         response = supabase.table("video_notes").select("*").eq("video_id", video_id).execute()
         
         if response.data and len(response.data) > 0:
+            print(f"[DB<-] Found note for video: {video_id}")
             return response.data[0]
         else:
+            print(f"[DB<-] No note found for video: {video_id}")
             return None
             
     except Exception as e:
-        print(f"Error fetching note: {str(e)}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 
@@ -88,14 +97,16 @@ def get_all_notes(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         List of note records
     """
     try:
+        print(f"[DB->] SELECT video_notes (limit={limit}, offset={offset})")
         query = supabase.table("video_notes").select("*")
         
         response = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
         
+        print(f"[DB<-] Retrieved {len(response.data) if response.data else 0} notes")
         return response.data if response.data else []
         
     except Exception as e:
-        print(f"Error fetching notes: {str(e)}")
+        print(f"[DB!!] {str(e)}")
         return []
 
 
@@ -111,6 +122,7 @@ def get_notes_with_video_info(limit: int = 50) -> List[Dict[str, Any]]:
         List of note records with video information
     """
     try:
+        print(f"[DB->] SELECT video_notes JOIN youtube_videos (limit={limit})")
         # Select note fields and join with video info
         query = supabase.table("video_notes").select(
             "video_id, note_content, created_at, updated_at, "
@@ -119,10 +131,11 @@ def get_notes_with_video_info(limit: int = 50) -> List[Dict[str, Any]]:
         
         response = query.order("updated_at", desc=True).limit(limit).execute()
         
+        print(f"[DB<-] Retrieved {len(response.data) if response.data else 0} notes with video info")
         return response.data if response.data else []
         
     except Exception as e:
-        print(f"Error fetching notes with video info: {str(e)}")
+        print(f"[DB!!] {str(e)}")
         return []
 
 
@@ -137,17 +150,18 @@ def delete_note(video_id: str) -> bool:
         True if successful, False otherwise
     """
     try:
+        print(f"[DB->] DELETE video_notes WHERE video_id={video_id}")
         response = supabase.table("video_notes").delete().eq("video_id", video_id).execute()
         
         if response.data:
-            print(f"✓ Deleted note for video: {video_id}")
+            print(f"[DB<-] Deleted note for video: {video_id}")
             return True
         else:
-            print(f"✗ Failed to delete note for video: {video_id}")
+            print(f"[DB<-] No note to delete for video: {video_id}")
             return False
             
     except Exception as e:
-        print(f"Error deleting note: {str(e)}")
+        print(f"[DB!!] {str(e)}")
         return False
 
 

@@ -2,12 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
+import { ChunkViewer } from '@/components/chunk-viewer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, Video, Loader2, LogOut } from 'lucide-react';
+import {
+  Save,
+  Video,
+  Loader2,
+  LogOut,
+  PlayCircle,
+  Filter,
+  User,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 
 interface VideoInfo {
   video_id: string;
@@ -35,8 +46,10 @@ export function VideoNotesEditor() {
   const [initialLoadedContent, setInitialLoadedContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { user, signOut, getAccessToken } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
@@ -184,6 +197,44 @@ export function VideoNotesEditor() {
     }
   };
 
+  const handleProcessVideo = async () => {
+    if (!videoInfo) return;
+
+    setProcessing(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/jobs/process-video',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ video_url: videoInfo.video_id }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create processing job');
+      }
+
+      const result = await response.json();
+      toast.success('Video processing started! This may take several minutes.');
+      console.log('Processing job created:', result);
+    } catch (error) {
+      console.error('Processing error:', error);
+      toast.error('Failed to start video processing');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleFetchVideo();
@@ -193,20 +244,42 @@ export function VideoNotesEditor() {
   return (
     <div className='min-h-screen bg-background'>
       <div className='container mx-auto p-6 max-w-6xl'>
-        <div className='mb-8 flex justify-between items-center'>
-          <div>
-            <h1 className='text-3xl font-bold mb-2'>YouTube Notes</h1>
-            <p className='text-muted-foreground'>
-              Enter a YouTube video URL or ID to create notes
-            </p>
-          </div>
-          <div className='flex items-center gap-4'>
-            <div className='text-sm text-muted-foreground'>
-              Signed in as <strong>{user?.email}</strong>
+        <div className='mb-8'>
+          <div className='flex justify-between items-center mb-4'>
+            <div>
+              <h1 className='text-3xl font-bold mb-2'>YouTube Notes</h1>
+              <p className='text-muted-foreground'>
+                Enter a YouTube video URL or ID to create notes
+              </p>
             </div>
-            <Button variant='outline' size='sm' onClick={handleSignOut}>
-              <LogOut className='mr-2 h-4 w-4' />
-              Sign Out
+            <div className='flex items-center gap-4'>
+              <div className='text-sm text-muted-foreground'>
+                Signed in as <strong>{user?.email}</strong>
+              </div>
+              <Button variant='outline' size='sm' onClick={handleSignOut}>
+                <LogOut className='mr-2 h-4 w-4' />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => router.push('/filter')}
+            >
+              <Filter className='mr-2 h-4 w-4' />
+              Browse All Videos
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => router.push('/creator-notes')}
+            >
+              <User className='mr-2 h-4 w-4' />
+              Creator Notes
             </Button>
           </div>
         </div>
@@ -250,20 +323,56 @@ export function VideoNotesEditor() {
 
           {/* Video Info Display */}
           {videoInfo && (
-            <div className='bg-card border rounded-lg p-4 space-y-2'>
-              <h2 className='text-xl font-semibold'>{videoInfo.title}</h2>
-              <div className='flex gap-4 text-sm text-muted-foreground'>
-                <span>Channel: {videoInfo.channel_title}</span>
-                {videoInfo.view_count && (
-                  <span>Views: {videoInfo.view_count.toLocaleString()}</span>
-                )}
-                {videoInfo.like_count && (
-                  <span>Likes: {videoInfo.like_count.toLocaleString()}</span>
-                )}
+            <div className='bg-card border rounded-lg p-4 space-y-3'>
+              <div className='flex justify-between items-start'>
+                <div className='space-y-2 flex-1'>
+                  <h2 className='text-xl font-semibold'>{videoInfo.title}</h2>
+                  <div className='flex gap-4 text-sm text-muted-foreground'>
+                    <span>Channel: {videoInfo.channel_title}</span>
+                    {videoInfo.view_count && (
+                      <span>
+                        Views: {videoInfo.view_count.toLocaleString()}
+                      </span>
+                    )}
+                    {videoInfo.like_count && (
+                      <span>
+                        Likes: {videoInfo.like_count.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleProcessVideo}
+                  disabled={processing}
+                  size='sm'
+                  variant='outline'
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className='mr-2 h-4 w-4' />
+                      Process Video
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
         </div>
+
+        {/* Chunks Section */}
+        {videoInfo && (
+          <div className='mb-6'>
+            <h3 className='text-lg font-semibold mb-4'>Video Chunks</h3>
+            <ChunkViewer videoId={videoInfo.video_id} />
+          </div>
+        )}
+
+        {videoInfo && <Separator className='my-6' />}
 
         {/* Editor Section */}
         {videoInfo && (

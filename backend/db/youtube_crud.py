@@ -93,6 +93,7 @@ def create_or_update_video(video_data: Dict[str, Any]) -> Optional[Dict[str, Any
     try:
         parsed_data = parse_youtube_video_data(video_data)
         
+        print(f"[DB->] UPSERT youtube_videos (id={parsed_data.get('id')}, title={parsed_data.get('title', '')[:30]}...)")
         response = supabase.table("youtube_videos").upsert(
             parsed_data,
             on_conflict='id'
@@ -100,14 +101,14 @@ def create_or_update_video(video_data: Dict[str, Any]) -> Optional[Dict[str, Any
         
         if response.data:
             video_id = response.data[0].get('id')
-            print(f"✅ Upserted video: {video_id} - {response.data[0].get('title')}")
+            print(f"[DB<-] Upserted video: {video_id}")
             return response.data[0]
         else:
-            print(f"⚠️  No data returned for video upsert")
+            print(f"[DB!!] No data returned for video upsert")
             return None
             
     except Exception as e:
-        print(f"❌ Upsert Error: {e}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 
@@ -124,22 +125,21 @@ def bulk_create_or_update_videos(videos_data: List[Dict[str, Any]]) -> Optional[
     try:
         parsed_videos = [parse_youtube_video_data(video) for video in videos_data]
         
+        print(f"[DB->] BULK UPSERT youtube_videos (count={len(parsed_videos)})")
         response = supabase.table("youtube_videos").upsert(
             parsed_videos,
             on_conflict='id'
         ).execute()
         
         if response.data:
-            print(f"✅ Upserted {len(response.data)} videos")
-            for video in response.data:
-                print(f"   - {video.get('id')}: {video.get('title')[:50]}...")
+            print(f"[DB<-] Upserted {len(response.data)} videos")
             return response.data
         else:
-            print(f"⚠️  No data returned for bulk upsert")
+            print(f"[DB!!] No data returned for bulk upsert")
             return None
             
     except Exception as e:
-        print(f"❌ Bulk Upsert Error: {e}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 
@@ -154,17 +154,18 @@ def get_video_by_id(video_id: str) -> Optional[Dict[str, Any]]:
         Video record or None if not found
     """
     try:
+        print(f"[DB->] SELECT youtube_videos WHERE id={video_id}")
         response = supabase.table("youtube_videos").select("*").eq("id", video_id).execute()
         
         if response.data and len(response.data) > 0:
-            print(f"✅ Found video: {response.data[0].get('title')}")
+            print(f"[DB<-] Found video: {response.data[0].get('title', '')[:40]}")
             return response.data[0]
         else:
-            print(f"⚠️  Video not found: {video_id}")
+            print(f"[DB<-] Video not found: {video_id}")
             return None
             
     except Exception as e:
-        print(f"❌ Read Error: {e}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 
@@ -179,17 +180,18 @@ def get_all_videos(limit: int = 100) -> Optional[List[Dict[str, Any]]]:
         List of video records or None on error
     """
     try:
+        print(f"[DB->] SELECT youtube_videos (limit={limit}, order=updated_at DESC)")
         response = supabase.table("youtube_videos").select("*").limit(limit).order('updated_at', desc=True).execute()
         
         if response.data:
-            print(f"✅ Retrieved {len(response.data)} videos")
+            print(f"[DB<-] Retrieved {len(response.data)} videos")
             return response.data
         else:
-            print(f"⚠️  No videos found")
+            print(f"[DB<-] No videos found")
             return []
             
     except Exception as e:
-        print(f"❌ Read Error: {e}")
+        print(f"[DB!!] {str(e)}")
         return None
 
 

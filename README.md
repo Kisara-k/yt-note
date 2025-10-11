@@ -1,6 +1,17 @@
 # YouTube Notes Application
 
-A full-stack application for creating and managing markdown notes for YouTube videos. Enter a video URL, and the app will fetch video information and let you write notes using a powerful TipTap markdown editor.
+A full-stack application for creating and managing markdown notes for YouTube videos with **AI-powered subtitle analysis**. Enter a video URL, process it with AI to get intelligent chunks, summaries, and key points, then write notes using a powerful TipTap markdown editor.
+
+## 🎯 NEW: AI-Powered Features
+
+- ✅ **Subtitle Extraction**: Automatic subtitle download via yt-dlp
+- ✅ **Intelligent Chunking**: Break videos into 5-minute segments
+- ✅ **OpenAI Analysis**: AI-generated titles, summaries, key points, and topics for each chunk
+- ✅ **Chunk Viewer**: Browse and explore video segments with AI insights
+- ✅ **Background Processing**: Async job queue for video processing
+- 🎉 **Process any YouTube video and get instant AI-powered insights!**
+
+**For complete implementation details**: See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md)
 
 ## 🔐 Authentication Required
 
