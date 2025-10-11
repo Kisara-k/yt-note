@@ -24,6 +24,7 @@ interface ChunkDetails {
   start_time: number;
   end_time: number;
   short_title: string;
+  chunk_text: string;
   ai_field_1: string;
   ai_field_2: string;
   ai_field_3: string;
@@ -189,7 +190,16 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
             {formatTime(chunkDetails.end_time)}
           </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-sm'>Chunk Text</CardTitle>
+              </CardHeader>
+              <CardContent className='max-h-48 overflow-y-auto text-sm'>
+                {chunkDetails.chunk_text || 'Not available'}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className='text-sm'>Summary</CardTitle>
