@@ -20,7 +20,7 @@ from prompts import get_all_prompts
 # Import module functions (no cross-module imports)
 from youtube import extract_video_id, fetch_video_metadata, fetch_batch_metadata
 from subtitles import extract_and_chunk_subtitles
-from openai import enrich_chunk, enrich_chunks_parallel
+from openai_api.enrichment import enrich_chunk, enrich_chunks_parallel
 
 # Import from db
 from db.youtube_crud import create_or_update_video, get_video_by_id, bulk_create_or_update_videos

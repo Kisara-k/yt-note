@@ -1,6 +1,6 @@
 """
 OpenAI module - Enrich text chunks with AI-generated fields
-Uses openai library (not SDK)
+Uses openai library v1.0+
 """
 
 import os
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    import openai
+    from openai import OpenAI, RateLimitError
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -36,7 +36,8 @@ def enrich_chunk(
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
     
-    openai.api_key = api_key
+    # Create OpenAI client instance (v1.0+ API)
+    client = OpenAI(api_key=api_key)
     results = {}
     
     # Process each field
@@ -54,9 +55,10 @@ def enrich_chunk(
         
         prompt = f"{prompt_template}\n\nText:\n{text}"
         
-        for attempt in range(max_retries):
+        retries = 0
+        while retries <= max_retries:
             try:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=max_tokens,
@@ -66,12 +68,15 @@ def enrich_chunk(
                 results[field_name] = response.choices[0].message.content.strip()
                 break
                 
-            except openai.error.RateLimitError:
-                if attempt < max_retries - 1:
-                    print(f"Rate limit hit, retrying in {retry_delay}s...")
+            except RateLimitError as e:
+                retries += 1
+                if retries <= max_retries:
+                    print(f"Rate limit hit - waiting {retry_delay}s (retry {retries}/{max_retries})")
                     time.sleep(retry_delay)
                 else:
                     results[field_name] = f"[Rate limit exceeded]"
+                    break
+                    
             except Exception as e:
                 print(f"Error enriching {field_name}: {e}")
                 results[field_name] = f"[Error: {str(e)}]"

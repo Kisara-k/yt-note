@@ -61,7 +61,7 @@ Database integration VERIFIED ✅
 - ✅ `background_worker.py` - Replaced by orchestrator.py
 - ✅ `chunking.py` - Replaced by subtitles module
 - ✅ `fetch_youtube_videos.py` - Replaced by youtube module
-- ✅ `openai_enrichment.py` - Replaced by openai module
+- ✅ `openai_enrichment.py` - Replaced by openai_api module
 - ✅ `subtitle_extraction.py` - Replaced by subtitles module
 - ✅ `subtitle_extractor_v2.py` - Replaced by subtitles module
 - ✅ `text_chunker_v2.py` - Replaced by subtitles module

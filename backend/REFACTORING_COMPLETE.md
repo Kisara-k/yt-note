@@ -163,7 +163,7 @@ extract_and_chunk_subtitles(video_id)  # Download → Clean → Chunk
 # Returns: List[{chunk_id, text, word_count, sentence_count}]
 ```
 
-### openai/enrichment.py
+### openai_api/enrichment.py
 
 ```python
 enrich_chunk(chunk)                    # Enrich single chunk

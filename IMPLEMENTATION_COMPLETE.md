@@ -23,7 +23,7 @@
 
    - `subtitle_extraction.py` - yt-dlp integration with Unix command
    - `chunking.py` - Hierarchical chunking logic
-   - `openai_enrichment.py` - AI enrichment with GPT
+   - `openai_api/enrichment.py` - AI enrichment with GPT
    - `background_worker.py` - Complete orchestration
 
 4. **API Endpoints** (`backend/api.py`)
@@ -196,7 +196,7 @@ Frontend polls/displays chunks
 - `backend/db/job_queue_crud.py`
 - `backend/subtitle_extraction.py`
 - `backend/chunking.py`
-- `backend/openai_enrichment.py`
+- `backend/openai_api/enrichment.py`
 - `backend/background_worker.py`
 - `backend/test_new_features.py`
 

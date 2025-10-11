@@ -160,7 +160,7 @@ chunks = extract_and_chunk_subtitles("dQw4w9WgXcQ")
 
 
 
-### `backend/openai/enrichment.py````python├── config.py          # Configuration
+### `backend/openai_api/enrichment.py````python├── config.py          # Configuration
 
 
 
@@ -328,7 +328,7 @@ result = process_full_video("dQw4w9WgXcQ")
 
 #   'chunks': [{...}, {...}],
 
-#   'enriched_chunks': [{...}, {...}]### `backend/openai/enrichment.py`fetch_batch_metadata(video_ids: List[str], api_key: str = None) -> List[Dict]
+#   'enriched_chunks': [{...}, {...}]### `backend/openai_api/enrichment.py`fetch_batch_metadata(video_ids: List[str], api_key: str = None) -> List[Dict]
 
 # }
 
@@ -462,7 +462,7 @@ for i, chunk in enumerate(chunks):
 
 ```python    prompts={extract_and_chunk_subtitles(  - `video_id`, `title`, `channel_title`, `channel_id`
 
-from openai.enrichment import enrich_chunks_parallel
+from openai_api.enrichment import enrich_chunks_parallel
 
 from prompts import PROMPTS 'title': PROMPTS['short_title']['template'],
 
@@ -618,7 +618,7 @@ process_video_subtitles(video_id: str) -> List[Dict]
 
 ✅ Parallel AI enrichment (5x faster)
 
-✅ Supabase PostgreSQL integration  # Complete pipeline### `backend/openai/enrichment.py`
+✅ Supabase PostgreSQL integration  # Complete pipeline### `backend/openai_api/enrichment.py`
 
 ✅ FastAPI REST endpoints
 
@@ -824,7 +824,7 @@ for i, chunk in enumerate(chunks):    prompts={    target_words: int = 1000,SUPA
 
 ```python        'field_2': PROMPTS['ai_field_2']['template'],
 
-from openai.enrichment import enrich_chunks_parallel
+from openai_api.enrichment import enrich_chunks_parallel
 
 from prompts import PROMPTS        'field_3': PROMPTS['ai_field_3']['template']    overlap_words: int = 100,# Database (for direct psycopg2 connection)
 
@@ -942,7 +942,7 @@ process_chunks_enrichment_parallel(chunks: list) -> list
 
 ### Key Features
 
-- Word-based chunks (not time-based)**Example:**### `backend/openai/enrichment.py```````bash
+- Word-based chunks (not time-based)**Example:**### `backend/openai_api/enrichment.py```````bash
 
 - Automatic timestamps (created_at, updated_at)
 
@@ -1144,7 +1144,7 @@ for i, chunk in enumerate(chunks):        'field_1': PROMPTS['ai_field_1']['temp
 
 ```python    }
 
-from openai.enrichment import enrich_chunks_parallel
+from openai_api.enrichment import enrich_chunks_parallel
 
 from prompts import PROMPTS)    kind VARCHAR(50),
 
@@ -1482,7 +1482,7 @@ for i, chunk in enumerate(chunks):
 
 ````python
 
-from openai.enrichment import enrich_chunks_parallel#### Demo Options
+from openai_api.enrichment import enrich_chunks_parallel#### Demo Options
 
 from prompts import PROMPTS
 

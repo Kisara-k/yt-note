@@ -58,9 +58,9 @@ except Exception as e:
     traceback.print_exc()
 
 # Test 3: OpenAI module (mock test - no API call)
-print("\n[3/4] Testing openai module...")
+print("\n[3/4] Testing openai_api module...")
 try:
-    from openai import enrich_chunk
+    from openai_api.enrichment import enrich_chunk
     
     test_prompts = {
         'title': 'Generate a short title for this text',
