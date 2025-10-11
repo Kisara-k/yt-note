@@ -21,9 +21,9 @@ supabase: Client = create_client(url, key)
 def create_chunk(
     video_id: str,
     chunk_id: int,
-    start_time: float,
-    end_time: float,
     chunk_text: str,
+    word_count: int,
+    sentence_count: int,
     short_title: Optional[str] = None,
     ai_field_1: Optional[str] = None,
     ai_field_2: Optional[str] = None,
@@ -35,9 +35,9 @@ def create_chunk(
     Args:
         video_id: YouTube video ID
         chunk_id: Chunk identifier (0-indexed)
-        start_time: Start time in seconds
-        end_time: end time in seconds
         chunk_text: Full text content of the chunk
+        word_count: Number of words in chunk
+        sentence_count: Number of sentences in chunk
         short_title: AI-generated short title (optional)
         ai_field_1: AI field 1 (optional)
         ai_field_2: AI field 2 (optional)
@@ -50,9 +50,9 @@ def create_chunk(
         chunk_data = {
             'video_id': video_id,
             'chunk_id': chunk_id,
-            'start_time': start_time,
-            'end_time': end_time,
             'chunk_text': chunk_text,
+            'word_count': word_count,
+            'sentence_count': sentence_count,
             'short_title': short_title,
             'ai_field_1': ai_field_1,
             'ai_field_2': ai_field_2,

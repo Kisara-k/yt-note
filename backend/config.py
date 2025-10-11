@@ -15,11 +15,6 @@ CHUNK_MIN_FINAL_WORDS = 500    # Minimum words for final chunk (otherwise merge 
 # ===================================================
 OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MAX_TOKENS_TITLE = 50
-OPENAI_MAX_TOKENS_OTHER = 500
-OPENAI_TEMPERATURE = 0.7
+OPENAI_MAX_TOKENS_OTHER = 200
+OPENAI_TEMPERATURE = 0.5
 
-# ===================================================
-# Legacy time-based config (deprecated, kept for backward compatibility)
-# ===================================================
-CHUNK_TARGET_DURATION = 2400.0  # 40 minutes in seconds
-CHUNK_MAX_DURATION = 3600.0     # 60 minutes in seconds

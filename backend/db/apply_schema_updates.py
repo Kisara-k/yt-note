@@ -4,12 +4,15 @@ Runs the schema_updates.sql file to create missing tables
 """
 
 import os
+import sys
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Load environment variables
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(env_path)
+# Add backend to path to import config
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Load environment variables from backend/.env
+load_dotenv()
 
 # Initialize Supabase client
 url = os.getenv("SUPABASE_URL")

@@ -1,6 +1,6 @@
 """
-FastAPI backend for YouTube Notes application
-Provides API endpoints for fetching video data and managing notes
+FastAPI backend for YouTube Notes
+Uses orchestrator for all module coordination
 """
 
 import os
@@ -8,10 +8,7 @@ import sys
 import threading
 from dotenv import load_dotenv
 
-# Load environment variables FIRST before any other imports
 load_dotenv()
-
-# Add parent directory to path to import from db and backend folders
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Depends
@@ -19,11 +16,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from db.youtube_crud import create_or_update_video, get_video_by_id, get_all_videos
+# Import orchestrator (handles all module coordination)
+from orchestrator import (
+    process_video_metadata,
+    process_batch_metadata,
+    process_full_video,
+    process_multiple_videos_parallel
+)
+
+# Import from auth and db directly
+from auth import get_current_user, is_email_verified
+from prompts import get_all_prompts, get_prompt_label
+from db.youtube_crud import get_video_by_id, get_all_videos
 from db.video_notes_crud import (
     create_or_update_note,
     get_note_by_video_id,
-    get_all_notes,
     get_notes_with_video_info
 )
 from db.subtitle_chunks_crud import (
@@ -31,25 +38,19 @@ from db.subtitle_chunks_crud import (
     get_chunk_index,
     get_chunk_details
 )
-from fetch_youtube_videos import fetch_video_details, extract_video_id
-from auth import get_current_user, is_email_verified
-from prompts import get_all_prompts, get_prompt_label
-from background_worker import VideoProcessor
 
-# Initialize FastAPI app
-app = FastAPI(title="YouTube Notes API", version="1.0.0")
+app = FastAPI(title="YouTube Notes API", version="2.0.0")
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js dev server
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# Request/Response Models
+# Models
 class VideoRequest(BaseModel):
     video_url: str
 
@@ -72,19 +73,6 @@ class NoteRequest(BaseModel):
     custom_tags: Optional[List[str]] = None
 
 
-class NoteResponse(BaseModel):
-    video_id: str
-    note_content: str
-    custom_tags: Optional[List[str]] = None
-    created_at: str
-    updated_at: str
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 class VerifyEmailRequest(BaseModel):
     email: str
 
@@ -94,64 +82,42 @@ class VerifyEmailResponse(BaseModel):
     message: str
 
 
-# API Endpoints
+# Routes
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {"message": "YouTube Notes API", "version": "1.0.0"}
+    return {"message": "YouTube Notes API", "version": "2.0.0"}
 
 
 @app.post("/api/auth/verify-email", response_model=VerifyEmailResponse)
 async def verify_email(request: VerifyEmailRequest):
-    """
-    Verify if an email is in the allowed list
-    This can be called before attempting Supabase authentication
-    """
     is_verified = is_email_verified(request.email)
-    
-    if is_verified:
-        return VerifyEmailResponse(
-            is_verified=True,
-            message="Email is verified and can access the application"
-        )
-    else:
-        return VerifyEmailResponse(
-            is_verified=False,
-            message="Email is not authorized to access this application"
-        )
+    return VerifyEmailResponse(
+        is_verified=is_verified,
+        message="Email is verified" if is_verified else "Email not authorized"
+    )
 
 
 @app.post("/api/video", response_model=VideoResponse)
 async def get_video(request: VideoRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Get video information by URL or ID
-    Fetches from database if exists, otherwise calls YouTube API
-    """
     try:
-        # Extract video ID from URL
+        # Check database first
+        from youtube import extract_video_id
         video_id = extract_video_id(request.video_url)
         
         if not video_id:
-            raise HTTPException(status_code=400, detail="Invalid video URL or ID")
+            raise HTTPException(status_code=400, detail="Invalid video URL")
         
-        # Check if video exists in database
         video = get_video_by_id(video_id)
         
         if not video:
-            # Fetch from YouTube API and store in database
-            print(f"Video {video_id} not in database, fetching from YouTube API...")
-            videos_data = fetch_video_details([video_id])
+            # Fetch via orchestrator
+            metadata = process_video_metadata(request.video_url)
             
-            if not videos_data or len(videos_data) == 0:
-                raise HTTPException(status_code=404, detail="Video not found on YouTube")
+            if not metadata:
+                raise HTTPException(status_code=404, detail="Video not found")
             
-            # Store in database
-            video = create_or_update_video(videos_data[0])
-            
-            if not video:
-                raise HTTPException(status_code=500, detail="Failed to store video in database")
+            video = get_video_by_id(video_id)
         
-        # Return video information
         return VideoResponse(
             video_id=video['id'],
             title=video['title'],
@@ -167,32 +133,20 @@ async def get_video(request: VideoRequest, current_user: dict = Depends(get_curr
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in get_video: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/note/{video_id}")
 async def get_note(video_id: str, current_user: dict = Depends(get_current_user)):
-    """
-    Get note for a specific video
-    Returns None if no note exists
-    Requires authentication
-    """
     try:
         note = get_note_by_video_id(video_id)
         return note if note else {"video_id": video_id, "note_content": None}
-        
     except Exception as e:
-        print(f"Error in get_note: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/note", response_model=NoteResponse)
+@app.post("/api/note")
 async def save_note(request: NoteRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Create or update a note for a video
-    Requires authentication
-    """
     try:
         note = create_or_update_note(
             video_id=request.video_id,
@@ -203,33 +157,19 @@ async def save_note(request: NoteRequest, current_user: dict = Depends(get_curre
         if not note:
             raise HTTPException(status_code=500, detail="Failed to save note")
         
-        return NoteResponse(
-            video_id=note['video_id'],
-            note_content=note['note_content'],
-            custom_tags=note.get('custom_tags', []),
-            created_at=note['created_at'],
-            updated_at=note['updated_at']
-        )
-        
+        return note
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in save_note: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/notes")
 async def get_notes(limit: int = 50, current_user: dict = Depends(get_current_user)):
-    """
-    Get all notes with video information
-    Requires authentication
-    """
     try:
         notes = get_notes_with_video_info(limit=limit)
         return {"notes": notes, "count": len(notes)}
-        
     except Exception as e:
-        print(f"Error in get_notes: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -239,91 +179,53 @@ async def get_creator_notes(
     limit: int = 50,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get notes filtered by channel/creator name
-    Requires authentication
-    """
     try:
-        # Get all notes with video info
-        all_notes = get_notes_with_video_info(limit=1000)  # Get more to filter
+        all_notes = get_notes_with_video_info(limit=1000)
         
-        # Filter by channel name (case-insensitive partial match)
         filtered_notes = [
             note for note in all_notes
             if note.get('channel_title') and 
             channel.lower() in note['channel_title'].lower()
         ]
         
-        # Limit results
-        filtered_notes = filtered_notes[:limit]
-        
         return {
-            "notes": filtered_notes,
-            "count": len(filtered_notes),
+            "notes": filtered_notes[:limit],
+            "count": len(filtered_notes[:limit]),
             "channel": channel
         }
-        
     except Exception as e:
-        print(f"Error in get_creator_notes: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/videos")
 async def get_videos(limit: int = 100, current_user: dict = Depends(get_current_user)):
-    """
-    Get all videos
-    Requires authentication
-    """
     try:
         videos = get_all_videos(limit=limit)
         return {"videos": videos or [], "count": len(videos) if videos else 0}
-        
     except Exception as e:
-        print(f"Error in get_videos: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===================================================
-# Chunk Endpoints
-# ===================================================
-
 @app.get("/api/chunks/{video_id}")
 async def get_video_chunks(video_id: str, current_user: dict = Depends(get_current_user)):
-    """
-    Get all chunks for a video
-    Requires authentication
-    """
     try:
         chunks = get_chunks_by_video(video_id)
         return {"video_id": video_id, "chunks": chunks, "count": len(chunks)}
-        
     except Exception as e:
-        print(f"Error in get_video_chunks: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/chunks/{video_id}/index")
 async def get_video_chunk_index(video_id: str, current_user: dict = Depends(get_current_user)):
-    """
-    Get chunk index (chunk_id and short_title) for a video
-    Used for dropdown display
-    Requires authentication
-    """
     try:
         index = get_chunk_index(video_id)
         return {"video_id": video_id, "index": index, "count": len(index)}
-        
     except Exception as e:
-        print(f"Error in get_video_chunk_index: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/chunks/{video_id}/{chunk_id}")
 async def get_chunk(video_id: str, chunk_id: int, current_user: dict = Depends(get_current_user)):
-    """
-    Get detailed information for a specific chunk
-    Requires authentication
-    """
     try:
         chunk = get_chunk_details(video_id, chunk_id)
         
@@ -331,56 +233,39 @@ async def get_chunk(video_id: str, chunk_id: int, current_user: dict = Depends(g
             raise HTTPException(status_code=404, detail="Chunk not found")
         
         return chunk
-        
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in get_chunk: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===================================================
-# Video Processing Endpoint
-# ===================================================
-
 @app.post("/api/jobs/process-video")
 async def process_video_endpoint(request: VideoRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Process a video immediately (extract subtitles, chunk, and enrich with AI)
-    Runs in background thread. Requires authentication.
-    """
+    """Process video: subtitles + chunking + AI enrichment (background)"""
     try:
+        from youtube import extract_video_id
         video_id = extract_video_id(request.video_url)
         
         if not video_id:
-            raise HTTPException(status_code=400, detail="Invalid video URL or ID")
+            raise HTTPException(status_code=400, detail="Invalid video URL")
         
-        # Check if video exists
+        # Ensure video metadata exists
         video = get_video_by_id(video_id)
-        
         if not video:
-            # Fetch and store video metadata first
-            videos_data = fetch_video_details([video_id])
-            
-            if not videos_data or len(videos_data) == 0:
-                raise HTTPException(status_code=404, detail="Video not found on YouTube")
-            
-            video = create_or_update_video(videos_data[0])
-            
-            if not video:
-                raise HTTPException(status_code=500, detail="Failed to store video in database")
+            metadata = process_video_metadata(request.video_url)
+            if not metadata:
+                raise HTTPException(status_code=404, detail="Video not found")
         
-        # Start processing in background thread
-        def process_in_background():
+        # Process in background
+        def background_task():
             try:
-                processor = VideoProcessor()
-                processor.process_video(video_id)
+                process_full_video(video_id)
             except Exception as e:
-                print(f"[!!] Background processing error: {str(e)}")
+                print(f"Background error: {e}")
                 import traceback
                 traceback.print_exc()
         
-        thread = threading.Thread(target=process_in_background, daemon=True)
+        thread = threading.Thread(target=background_task, daemon=True)
         thread.start()
         
         return {
@@ -392,55 +277,38 @@ async def process_video_endpoint(request: VideoRequest, current_user: dict = Dep
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[!!] Error starting video processing: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/test/process-video-no-auth")
 async def process_video_no_auth(request: VideoRequest):
-    """
-    TEST ENDPOINT: Process video without authentication (for testing only)
-    """
+    """TEST: Process video without auth"""
     try:
+        from youtube import extract_video_id
         video_id = extract_video_id(request.video_url)
         
         if not video_id:
-            raise HTTPException(status_code=400, detail="Invalid video URL or ID")
+            raise HTTPException(status_code=400, detail="Invalid video URL")
         
-        print(f"\n{'='*70}")
-        print(f"[TEST] Processing video without auth: {video_id}")
-        print(f"{'='*70}\n")
-        
-        # Check if video exists
         video = get_video_by_id(video_id)
-        
         if not video:
-            # Fetch and store video metadata first
-            videos_data = fetch_video_details([video_id])
-            
-            if not videos_data or len(videos_data) == 0:
-                raise HTTPException(status_code=404, detail="Video not found on YouTube")
-            
-            video = create_or_update_video(videos_data[0])
-            
-            if not video:
-                raise HTTPException(status_code=500, detail="Failed to store video in database")
+            metadata = process_video_metadata(request.video_url)
+            if not metadata:
+                raise HTTPException(status_code=404, detail="Video not found")
         
-        # Start processing in background thread
-        def process_in_background():
+        def background_task():
             try:
-                processor = VideoProcessor()
-                processor.process_video(video_id)
+                process_full_video(video_id)
             except Exception as e:
-                print(f"[!!] Background processing error: {str(e)}")
+                print(f"Background error: {e}")
                 import traceback
                 traceback.print_exc()
         
-        thread = threading.Thread(target=process_in_background, daemon=True)
+        thread = threading.Thread(target=background_task, daemon=True)
         thread.start()
         
         return {
-            "message": "Video processing started (TEST MODE - NO AUTH)",
+            "message": "Video processing started (TEST)",
             "video_id": video_id,
             "status": "processing"
         }
@@ -448,38 +316,27 @@ async def process_video_no_auth(request: VideoRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[!!] Error starting video processing: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ===================================================
-# Prompts Configuration Endpoints (Read-only - hardcoded)
-# ===================================================
 
 @app.get("/api/prompts")
 async def get_prompts(current_user: dict = Depends(get_current_user)):
-    """
-    Get all prompt configurations (hardcoded, read-only)
-    Requires authentication
-    """
+    """Get prompt configurations"""
     try:
-        prompts = get_all_prompts()
-        # Convert to list format expected by frontend
+        prompts_dict = get_all_prompts()
         prompts_list = [
             {
-                'field_name': field_name,
-                'label': config['label'],
-                'template': config['template']
+                'field_name': key,
+                'label': get_prompt_label(key),
+                'template': prompts_dict[key]
             }
-            for field_name, config in prompts.items()
+            for key in prompts_dict
         ]
         return {"prompts": prompts_list, "count": len(prompts_list)}
-        
     except Exception as e:
-        print(f"Error in get_prompts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Run with: uvicorn api:app --reload
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

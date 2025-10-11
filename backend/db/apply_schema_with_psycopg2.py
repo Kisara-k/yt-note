@@ -4,13 +4,16 @@ Executes the schema_updates.sql file to create missing tables
 """
 
 import os
+import sys
 import psycopg2
 from dotenv import load_dotenv
 import re
 
-# Load environment variables
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(env_path)
+# Add backend to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Load environment variables from backend/.env
+load_dotenv()
 
 def get_connection_string():
     """Build PostgreSQL connection string from Supabase credentials"""
