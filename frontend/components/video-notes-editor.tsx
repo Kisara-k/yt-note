@@ -101,14 +101,14 @@ export function VideoNotesEditor() {
         })
         .catch(() => '');
 
-      // Set video info immediately (don't wait for note)
-      setVideoInfo(videoData);
-      toast.success(`Loaded: ${videoData.title}`);
-
-      // Wait for note to complete and update
+      // Wait for note to complete before showing UI
       const loadedNote = await notePromise;
       setNoteContent(loadedNote);
       setInitialLoadedContent(loadedNote);
+
+      // Set video info after note is loaded
+      setVideoInfo(videoData);
+      toast.success(`Loaded: ${videoData.title}`);
 
       if (loadedNote) {
         toast.info('Existing note loaded');
