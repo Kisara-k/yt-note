@@ -38,7 +38,8 @@ from db.video_notes_crud import (
 from db.subtitle_chunks_crud import (
     get_chunks_by_video,
     get_chunk_index,
-    get_chunk_details
+    get_chunk_details,
+    load_chunks_text
 )
 
 app = FastAPI(title="YouTube Notes API", version="2.0.0")
@@ -236,9 +237,21 @@ async def get_videos(limit: int = 100, current_user: dict = Depends(get_current_
 
 
 @app.get("/api/chunks/{video_id}")
-async def get_video_chunks(video_id: str, current_user: dict = Depends(get_current_user)):
+async def get_video_chunks(video_id: str, include_text: bool = False, current_user: dict = Depends(get_current_user)):
+    """
+    Get all chunks for a video
+    
+    Args:
+        video_id: YouTube video ID
+        include_text: If True, load chunk text from storage (default: False for performance)
+    """
     try:
         chunks = get_chunks_by_video(video_id)
+        
+        # Load chunk text if requested
+        if include_text and chunks:
+            chunks = load_chunks_text(chunks)
+        
         return {"video_id": video_id, "chunks": chunks, "count": len(chunks)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -254,9 +267,17 @@ async def get_video_chunk_index(video_id: str, current_user: dict = Depends(get_
 
 
 @app.get("/api/chunks/{video_id}/{chunk_id}")
-async def get_chunk(video_id: str, chunk_id: int, current_user: dict = Depends(get_current_user)):
+async def get_chunk(video_id: str, chunk_id: int, include_text: bool = True, current_user: dict = Depends(get_current_user)):
+    """
+    Get a specific chunk
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        include_text: If True, load chunk text from storage (default: True)
+    """
     try:
-        chunk = get_chunk_details(video_id, chunk_id)
+        chunk = get_chunk_details(video_id, chunk_id, include_text=include_text)
         
         if not chunk:
             raise HTTPException(status_code=404, detail="Chunk not found")

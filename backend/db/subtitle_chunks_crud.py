@@ -1,13 +1,19 @@
 """
 CRUD operations for subtitle chunks in Supabase
-Simplified: No storage_path, no created_at, no processing_status
-Empty AI fields indicate not yet processed
+Uses Supabase Storage for chunk text, DB for metadata and AI fields
 """
 
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
+from .subtitle_chunks_storage import (
+    ensure_bucket_exists,
+    upload_chunk_text,
+    download_chunk_text,
+    delete_video_chunks_from_storage,
+    delete_chunk_from_storage
+)
 
 # Load environment variables
 load_dotenv()
@@ -16,6 +22,44 @@ load_dotenv()
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
+
+# Ensure storage bucket exists on module load
+ensure_bucket_exists()
+
+
+def load_chunk_text(chunk: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Load chunk text from storage and add it to the chunk dict
+    Modifies chunk in-place and returns it
+    
+    Args:
+        chunk: Chunk dictionary with chunk_text_path
+        
+    Returns:
+        Chunk dictionary with chunk_text added
+    """
+    if chunk.get('chunk_text_path'):
+        chunk_text = download_chunk_text(chunk['chunk_text_path'])
+        chunk['chunk_text'] = chunk_text if chunk_text else None
+    else:
+        chunk['chunk_text'] = None
+    return chunk
+
+
+def load_chunks_text(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Load chunk text from storage for multiple chunks
+    Modifies chunks in-place and returns them
+    
+    Args:
+        chunks: List of chunk dictionaries with chunk_text_path
+        
+    Returns:
+        List of chunk dictionaries with chunk_text added
+    """
+    for chunk in chunks:
+        load_chunk_text(chunk)
+    return chunks
 
 
 def create_chunk(
@@ -29,6 +73,7 @@ def create_chunk(
 ) -> Optional[Dict[str, Any]]:
     """
     Create a new subtitle chunk with optional AI fields
+    Stores chunk text in storage, metadata in DB
     
     Args:
         video_id: YouTube video ID
@@ -43,17 +88,23 @@ def create_chunk(
         Created chunk record or None on error
     """
     try:
+        # Upload chunk text to storage
+        chunk_text_path = upload_chunk_text(video_id, chunk_id, chunk_text)
+        if not chunk_text_path:
+            print(f"[DB!!] Failed to upload chunk text to storage")
+            return None
+        
         chunk_data = {
             'video_id': video_id,
             'chunk_id': chunk_id,
-            'chunk_text': chunk_text,
+            'chunk_text_path': chunk_text_path,
             'short_title': short_title,
             'ai_field_1': ai_field_1,
             'ai_field_2': ai_field_2,
             'ai_field_3': ai_field_3
         }
         
-        print(f"[DB->] UPSERT subtitle_chunks (video={video_id}, chunk={chunk_id}, text_len={len(chunk_text)})")
+        print(f"[DB->] UPSERT subtitle_chunks (video={video_id}, chunk={chunk_id}, storage={chunk_text_path})")
         response = supabase.table("subtitle_chunks").upsert(chunk_data).execute()
         
         if response.data and len(response.data) > 0:
@@ -126,12 +177,13 @@ def update_chunk_ai_fields(
 def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
     """
     Get all chunks for a video
+    Note: chunk_text is loaded from storage on demand
     
     Args:
         video_id: YouTube video ID
         
     Returns:
-        List of chunk records ordered by chunk_id
+        List of chunk records ordered by chunk_id (includes chunk_text_path, not chunk_text)
     """
     try:
         print(f"[DB->] SELECT subtitle_chunks WHERE video_id={video_id}")
@@ -146,6 +198,46 @@ def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"[DB!!] {str(e)}")
         return []
+
+
+def get_chunk_details(video_id: str, chunk_id: int, include_text: bool = True) -> Optional[Dict[str, Any]]:
+    """
+    Get detailed information for a specific chunk
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        include_text: If True, fetch chunk_text from storage
+        
+    Returns:
+        Chunk record or None if not found
+    """
+    try:
+        print(f"[DB->] SELECT chunk_details WHERE video_id={video_id}, chunk_id={chunk_id}")
+        response = supabase.table("subtitle_chunks").select(
+            "*"
+        ).eq("video_id", video_id).eq("chunk_id", chunk_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            chunk = response.data[0]
+            
+            # Load chunk text from storage if requested
+            if include_text and chunk.get('chunk_text_path'):
+                chunk_text = download_chunk_text(chunk['chunk_text_path'])
+                if chunk_text:
+                    chunk['chunk_text'] = chunk_text
+                else:
+                    print(f"[DB!!] Failed to load chunk text from storage")
+                    chunk['chunk_text'] = None
+            
+            print(f"[DB<-] Found chunk {chunk_id}")
+            return chunk
+        print(f"[DB<-] Chunk not found")
+        return None
+        
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
 
 
 def get_chunk_index(video_id: str) -> List[Dict[str, Any]]:
@@ -174,37 +266,9 @@ def get_chunk_index(video_id: str) -> List[Dict[str, Any]]:
         return []
 
 
-def get_chunk_details(video_id: str, chunk_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Get detailed information for a specific chunk
-    
-    Args:
-        video_id: YouTube video ID
-        chunk_id: Chunk identifier
-        
-    Returns:
-        Chunk record or None if not found
-    """
-    try:
-        print(f"[DB->] SELECT chunk_details WHERE video_id={video_id}, chunk_id={chunk_id}")
-        response = supabase.table("subtitle_chunks").select(
-            "*"
-        ).eq("video_id", video_id).eq("chunk_id", chunk_id).execute()
-        
-        if response.data and len(response.data) > 0:
-            print(f"[DB<-] Found chunk {chunk_id}")
-            return response.data[0]
-        print(f"[DB<-] Chunk not found")
-        return None
-        
-    except Exception as e:
-        print(f"[DB!!] {str(e)}")
-        return None
-
-
 def delete_chunks_by_video(video_id: str) -> bool:
     """
-    Delete all chunks for a video
+    Delete all chunks for a video (both DB records and storage files)
     
     Args:
         video_id: YouTube video ID
@@ -213,6 +277,10 @@ def delete_chunks_by_video(video_id: str) -> bool:
         True if successful, False otherwise
     """
     try:
+        # Delete from storage first
+        delete_video_chunks_from_storage(video_id)
+        
+        # Then delete from database
         print(f"[DB->] DELETE subtitle_chunks WHERE video_id={video_id}")
         response = supabase.table("subtitle_chunks").delete().eq(
             "video_id", video_id
@@ -229,6 +297,7 @@ def delete_chunks_by_video(video_id: str) -> bool:
 def bulk_create_chunks(chunks: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
     """
     Create multiple chunks in a single request
+    Uploads all chunk texts to storage, then creates DB records
     
     Args:
         chunks: List of chunk dictionaries with required fields:
@@ -238,19 +307,37 @@ def bulk_create_chunks(chunks: List[Dict[str, Any]]) -> Optional[List[Dict[str, 
         List of created chunks or None on error
     """
     try:
-        # Ensure all chunks have the required fields and NULL AI fields
+        # First, upload all chunk texts to storage
+        db_chunks = []
         for chunk in chunks:
-            if 'short_title' not in chunk:
-                chunk['short_title'] = None
-            if 'ai_field_1' not in chunk:
-                chunk['ai_field_1'] = None
-            if 'ai_field_2' not in chunk:
-                chunk['ai_field_2'] = None
-            if 'ai_field_3' not in chunk:
-                chunk['ai_field_3'] = None
+            video_id = chunk['video_id']
+            chunk_id = chunk['chunk_id']
+            chunk_text = chunk['chunk_text']
+            
+            chunk_text_path = upload_chunk_text(video_id, chunk_id, chunk_text)
+            if not chunk_text_path:
+                print(f"[DB!!] Failed to upload chunk {chunk_id} to storage")
+                continue
+            
+            # Prepare DB record with storage path instead of text
+            db_chunk = {
+                'video_id': video_id,
+                'chunk_id': chunk_id,
+                'chunk_text_path': chunk_text_path,
+                'short_title': chunk.get('short_title'),
+                'ai_field_1': chunk.get('ai_field_1'),
+                'ai_field_2': chunk.get('ai_field_2'),
+                'ai_field_3': chunk.get('ai_field_3')
+            }
+            db_chunks.append(db_chunk)
         
-        print(f"[DB->] BULK UPSERT subtitle_chunks (count={len(chunks)})")
-        response = supabase.table("subtitle_chunks").upsert(chunks).execute()
+        if not db_chunks:
+            print(f"[DB!!] No chunks to upload")
+            return None
+        
+        # Bulk insert to database
+        print(f"[DB->] BULK UPSERT subtitle_chunks (count={len(db_chunks)})")
+        response = supabase.table("subtitle_chunks").upsert(db_chunks).execute()
         
         if response.data:
             print(f"[DB<-] Upserted {len(response.data)} chunks")
@@ -315,13 +402,14 @@ def bulk_update_ai_fields(video_id: str, enriched_chunks: List[Dict[str, Any]]) 
         return None
 
 
-def get_unprocessed_chunks(video_id: str) -> List[Dict[str, Any]]:
+def get_unprocessed_chunks(video_id: str, include_text: bool = True) -> List[Dict[str, Any]]:
     """
     Get all chunks for a video that haven't been AI-processed yet
     (chunks where any AI field is NULL)
     
     Args:
         video_id: YouTube video ID
+        include_text: If True, fetch chunk_text from storage for each chunk
         
     Returns:
         List of unprocessed chunk records
@@ -334,8 +422,17 @@ def get_unprocessed_chunks(video_id: str) -> List[Dict[str, Any]]:
             "short_title.is.null,ai_field_1.is.null,ai_field_2.is.null,ai_field_3.is.null"
         ).order("chunk_id").execute()
         
-        print(f"[DB<-] Found {len(response.data) if response.data else 0} unprocessed chunks")
-        return response.data if response.data else []
+        chunks = response.data if response.data else []
+        
+        # Load chunk text from storage if requested
+        if include_text:
+            for chunk in chunks:
+                if chunk.get('chunk_text_path'):
+                    chunk_text = download_chunk_text(chunk['chunk_text_path'])
+                    chunk['chunk_text'] = chunk_text if chunk_text else None
+        
+        print(f"[DB<-] Found {len(chunks)} unprocessed chunks")
+        return chunks
         
     except Exception as e:
         print(f"[DB!!] {str(e)}")

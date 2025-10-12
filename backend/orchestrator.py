@@ -231,6 +231,12 @@ def process_ai_enrichment_only(video_id: str) -> bool:
         
         print(f"Found {len(chunks)} chunks\n", flush=True)
         
+        # Load chunk text from storage for all chunks
+        print("[1.5/3] Loading chunk text from storage...", flush=True)
+        from db.subtitle_chunks_crud import load_chunks_text
+        chunks = load_chunks_text(chunks)
+        print(f"Loaded text for {len(chunks)} chunks\n", flush=True)
+        
         # Step 2: Enrich with AI (parallel)
         print("[2/3] Enriching chunks with AI (parallel)...", flush=True)
         

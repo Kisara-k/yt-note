@@ -127,7 +127,7 @@ def test_4_full_pipeline():
     
     try:
         from orchestrator import process_full_video
-        from db.subtitle_chunks_crud import get_chunks_by_video
+        from db.subtitle_chunks_crud import get_chunks_by_video, load_chunks_text
         
         print(f"\nProcessing video: {TEST_VIDEO_ID}")
         success = process_full_video(TEST_VIDEO_ID)
@@ -140,6 +140,8 @@ def test_4_full_pipeline():
         
         # Verify chunks in database
         db_chunks = get_chunks_by_video(TEST_VIDEO_ID)
+        # Load chunk text from storage for display
+        load_chunks_text(db_chunks)
         
         if not db_chunks:
             print("✗ No chunks found in database")
