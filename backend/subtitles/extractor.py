@@ -47,6 +47,8 @@ def _clean_srt_to_text(srt_file: str) -> str:
     text = re.sub(r'\d+\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\n', '', content)
     # Remove sequence numbers
     text = re.sub(r'^\d+$', '', text, flags=re.MULTILINE)
+    # Remove >> markers (subtitle artifacts)
+    text = re.sub(r'>>\s*', '', text)
     # Remove empty lines
     text = re.sub(r'\n\s*\n', '\n', text)
     # Clean extra whitespace

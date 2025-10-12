@@ -21,15 +21,11 @@ interface ChunkIndex {
 
 interface ChunkDetails {
   chunk_id: number;
-  start_time: number;
-  end_time: number;
   short_title: string;
   chunk_text: string;
   ai_field_1: string;
   ai_field_2: string;
   ai_field_3: string;
-  storage_path: string;
-  ai_processing_status: string;
 }
 
 interface ChunkViewerProps {
@@ -128,15 +124,6 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${hours.toString().padStart(2, '0')}:${minutes
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   if (loadingChunks) {
     return (
       <div className='flex items-center justify-center p-8'>
@@ -185,11 +172,6 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
         </div>
       ) : chunkDetails ? (
         <div className='space-y-4'>
-          <div className='text-sm text-muted-foreground'>
-            {formatTime(chunkDetails.start_time)} -{' '}
-            {formatTime(chunkDetails.end_time)}
-          </div>
-
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <Card>
               <CardHeader>
@@ -227,12 +209,6 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
               </CardContent>
             </Card>
           </div>
-
-          {chunkDetails.ai_processing_status === 'pending' && (
-            <div className='text-sm text-yellow-600 dark:text-yellow-500'>
-              ⚠️ AI processing pending for this chunk
-            </div>
-          )}
         </div>
       ) : null}
     </div>

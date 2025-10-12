@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
+// import { toast } from 'sonner';
 import {
   Save,
   Video,
@@ -16,6 +16,7 @@ import {
   PlayCircle,
   Filter,
   User,
+  ThumbsUp,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -46,23 +47,105 @@ export function VideoNotesEditor() {
   const [initialLoadedContent, setInitialLoadedContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [processingSubtitles, setProcessingSubtitles] = useState(false);
+  const [processingAI, setProcessingAI] = useState(false);
+  const [hasSubtitles, setHasSubtitles] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const chunkViewerKey = useRef(0);
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
+
+  // Load video from localStorage on mount
+  useEffect(() => {
+    const savedVideoId = localStorage.getItem('currentVideoId');
+    if (savedVideoId && !videoInfo) {
+      // Auto-load the saved video
+      loadVideoById(savedVideoId);
+    }
+  }, []);
+
+  // Save video to localStorage when it changes
+  useEffect(() => {
+    if (videoInfo) {
+      localStorage.setItem('currentVideoId', videoInfo.video_id);
+    }
+  }, [videoInfo]);
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.success('Signed out successfully');
+      // toast.success('Signed out successfully');
     } catch (error) {
-      toast.error('Failed to sign out');
+      // toast.error('Failed to sign out');
+    }
+  };
+
+  const loadVideoById = async (video_id: string) => {
+    setLoading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        // toast.error('Authentication required');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch video metadata from database
+      const videoResponse = await fetch(
+        `http://localhost:8000/api/video/${video_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!videoResponse.ok) {
+        throw new Error('Failed to load saved video');
+      }
+
+      const videoData: VideoInfo = await videoResponse.json();
+
+      // Load note
+      const noteResponse = await fetch(
+        `http://localhost:8000/api/note/${video_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      let loadedNote = '';
+      if (noteResponse.ok) {
+        const noteData: NoteData = await noteResponse.json();
+        loadedNote = noteData.note_content || '';
+      }
+
+      setNoteContent(loadedNote);
+      setInitialLoadedContent(loadedNote);
+      setVideoInfo(videoData);
+      setVideoUrl(video_id);
+
+      // Check if subtitles exist
+      await checkSubtitles(video_id);
+
+      // Force ChunkViewer to refresh for new video
+      chunkViewerKey.current += 1;
+
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error loading saved video:', error);
+      // Clear saved video if it fails to load
+      localStorage.removeItem('currentVideoId');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleFetchVideo = async () => {
     if (!videoUrl.trim()) {
-      toast.error('Please enter a video URL or ID');
+      // toast.error('Please enter a video URL or ID');
       return;
     }
 
@@ -70,7 +153,7 @@ export function VideoNotesEditor() {
     try {
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Authentication required');
+        // toast.error('Authentication required');
         setLoading(false);
         return;
       }
@@ -121,18 +204,24 @@ export function VideoNotesEditor() {
 
       // Set video info after note is loaded
       setVideoInfo(videoData);
-      toast.success(`Loaded: ${videoData.title}`);
+      // toast.success(`Loaded: ${videoData.title}`);
 
       if (loadedNote) {
-        toast.info('Existing note loaded');
+        // toast.info('Existing note loaded');
       }
+
+      // Check if subtitles exist
+      await checkSubtitles(videoData.video_id);
+
+      // Force ChunkViewer to refresh for new video
+      chunkViewerKey.current += 1;
 
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error('Error fetching video:', error);
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to fetch video'
-      );
+      // toast.error(
+      //   error instanceof Error ? error.message : 'Failed to fetch video'
+      // );
     } finally {
       setLoading(false);
     }
@@ -140,7 +229,7 @@ export function VideoNotesEditor() {
 
   const handleSaveNote = async () => {
     if (!videoInfo) {
-      toast.error('Please load a video first');
+      // toast.error('Please load a video first');
       return;
     }
 
@@ -148,7 +237,7 @@ export function VideoNotesEditor() {
     try {
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Authentication required');
+        // toast.error('Authentication required');
         setSaving(false);
         return;
       }
@@ -175,14 +264,14 @@ export function VideoNotesEditor() {
       }
 
       const savedNote: NoteData = await response.json();
-      toast.success('Note saved successfully');
+      // toast.success('Note saved successfully');
       setHasUnsavedChanges(false);
       setInitialLoadedContent(noteContent);
     } catch (error) {
       console.error('Error saving note:', error);
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to save note'
-      );
+      // toast.error(
+      //   error instanceof Error ? error.message : 'Failed to save note'
+      // );
     } finally {
       setSaving(false);
     }
@@ -197,14 +286,211 @@ export function VideoNotesEditor() {
     }
   };
 
-  const handleProcessVideo = async () => {
+  const checkSubtitles = async (video_id: string, expectedCount?: number) => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return { hasChunks: false, count: 0 };
+
+      const response = await fetch(
+        `http://localhost:8000/api/chunks/${video_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const hasChunks = data.count > 0;
+
+        // If expected count is provided, check if we have all chunks
+        if (expectedCount !== undefined) {
+          const isComplete = data.count >= expectedCount;
+          setHasSubtitles(isComplete);
+          return { hasChunks: isComplete, count: data.count };
+        }
+
+        setHasSubtitles(hasChunks);
+        return { hasChunks, count: data.count };
+      }
+      return { hasChunks: false, count: 0 };
+    } catch (error) {
+      console.error('Error checking subtitles:', error);
+      return { hasChunks: false, count: 0 };
+    }
+  };
+
+  const checkAIEnrichment = async (video_id: string) => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return false;
+
+      const response = await fetch(
+        `http://localhost:8000/api/chunks/${video_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Check if at least one chunk has AI fields populated
+        if (data.chunks && data.chunks.length > 0) {
+          const hasAI = data.chunks.some(
+            (chunk: any) => chunk.short_title || chunk.ai_field_1
+          );
+          return hasAI;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking AI enrichment:', error);
+      return false;
+    }
+  };
+
+  const handleProcessSubtitles = async () => {
     if (!videoInfo) return;
 
-    setProcessing(true);
+    setProcessingSubtitles(true);
+    setHasSubtitles(false);
     try {
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Authentication required');
+        // toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/jobs/process-subtitles',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ video_url: videoInfo.video_id }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to start subtitle processing');
+      }
+
+      const result = await response.json();
+      // toast.success(
+      //   'Subtitle processing started! Check backend logs for progress.'
+      // );
+      console.log('Subtitle processing started:', result);
+
+      // Poll for completion every 3 seconds
+      // With bulk operations, all chunks appear atomically - no need for stability check
+      let pollCount = 0;
+      const maxPolls = 40; // 2 minutes
+
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+        const result = await checkSubtitles(videoInfo.video_id);
+
+        if (result.hasChunks && result.count > 0) {
+          // Chunks found! Since we use bulk insert, all chunks are present
+          clearInterval(pollInterval);
+          // toast.success(
+          //   `Subtitles processed successfully! ${result.count} chunks created.`
+          // );
+          console.log(
+            `Subtitles processed successfully! ${result.count} chunks created.`
+          );
+          chunkViewerKey.current += 1; // Force ChunkViewer to refresh
+        } else if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          // toast.info(
+          //   'Subtitle processing is taking longer than expected. Check backend logs.'
+          // );
+          console.log('Subtitle processing timeout');
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Subtitle processing error:', error);
+      // toast.error('Failed to start subtitle processing');
+    } finally {
+      setProcessingSubtitles(false);
+    }
+  };
+
+  const handleProcessAI = async () => {
+    if (!videoInfo) return;
+
+    setProcessingAI(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        // toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/jobs/process-ai-enrichment',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ video_url: videoInfo.video_id }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to start AI enrichment');
+      }
+
+      const result = await response.json();
+      // toast.success('AI enrichment started! Check backend logs for progress.');
+      console.log('AI enrichment started:', result);
+
+      // Poll to check if AI enrichment is complete
+      let pollCount = 0;
+      const maxPolls = 60; // 3 minutes (60 * 3 seconds)
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+        const hasAIEnrichment = await checkAIEnrichment(videoInfo.video_id);
+
+        if (hasAIEnrichment) {
+          clearInterval(pollInterval);
+          setProcessingAI(false);
+          chunkViewerKey.current += 1; // Force ChunkViewer to refresh
+          // toast.success('AI enrichment complete! Chunks updated.');
+          console.log('AI enrichment complete!');
+        } else if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          setProcessingAI(false);
+          // toast.info('AI enrichment is taking longer than expected. Manually refresh to see updates.');
+          console.log(
+            'AI enrichment timeout - manually refresh to see updates'
+          );
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('AI enrichment error:', error);
+      // toast.error(error instanceof Error ? error.message : 'Failed to start AI enrichment');
+      setProcessingAI(false);
+    }
+  };
+
+  const handleProcessVideo = async () => {
+    if (!videoInfo) return;
+
+    setProcessingSubtitles(true);
+    setProcessingAI(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        // toast.error('Authentication required');
         return;
       }
 
@@ -225,13 +511,14 @@ export function VideoNotesEditor() {
       }
 
       const result = await response.json();
-      toast.success('Video processing started! This may take several minutes.');
+      // toast.success('Video processing started! This may take several minutes.');
       console.log('Processing job created:', result);
     } catch (error) {
       console.error('Processing error:', error);
-      toast.error('Failed to start video processing');
+      // toast.error('Failed to start video processing');
     } finally {
-      setProcessing(false);
+      setProcessingSubtitles(false);
+      setProcessingAI(false);
     }
   };
 
@@ -328,37 +615,77 @@ export function VideoNotesEditor() {
                 <div className='space-y-2 flex-1'>
                   <h2 className='text-xl font-semibold'>{videoInfo.title}</h2>
                   <div className='flex gap-4 text-sm text-muted-foreground'>
-                    <span>Channel: {videoInfo.channel_title}</span>
+                    <span>{videoInfo.channel_title}</span>
+                    {videoInfo.duration && (
+                      <span>
+                      {(() => {
+                        // Convert ISO 8601 duration (PT1H2M3S) to HH:MM:SS or MM:SS
+                        const match = videoInfo.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                        if (!match) return videoInfo.duration;
+                        
+                        const hours = parseInt(match[1] || '0', 10);
+                        const minutes = parseInt(match[2] || '0', 10);
+                        const seconds = parseInt(match[3] || '0', 10);
+                        
+                        if (hours > 0) {
+                        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        } else {
+                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                      })()}
+                      </span>
+                    )}
                     {videoInfo.view_count && (
                       <span>
-                        Views: {videoInfo.view_count.toLocaleString()}
+                      {videoInfo.view_count.toLocaleString()}
                       </span>
                     )}
                     {videoInfo.like_count && (
-                      <span>
-                        Likes: {videoInfo.like_count.toLocaleString()}
+                      <span className="flex items-center gap-1">
+                      <ThumbsUp className="h-3 w-3" />
+                      {videoInfo.like_count.toLocaleString()}
                       </span>
                     )}
                   </div>
                 </div>
-                <Button
-                  onClick={handleProcessVideo}
-                  disabled={processing}
-                  size='sm'
-                  variant='outline'
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className='mr-2 h-4 w-4' />
-                      Process Video
-                    </>
-                  )}
-                </Button>
+                <div className='flex gap-2'>
+                  <Button
+                    onClick={handleProcessSubtitles}
+                    disabled={processingSubtitles}
+                    size='sm'
+                    variant='outline'
+                  >
+                    {processingSubtitles ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className='mr-2 h-4 w-4' />
+                        Process Subtitles
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleProcessAI}
+                    disabled={!hasSubtitles || processingAI}
+                    size='sm'
+                    variant='default'
+                  >
+                    {processingAI ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className='mr-2 h-4 w-4' />
+                        AI Enrichment
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -367,8 +694,18 @@ export function VideoNotesEditor() {
         {/* Chunks Section */}
         {videoInfo && (
           <div className='mb-6'>
-            <h3 className='text-lg font-semibold mb-4'>Video Chunks</h3>
-            <ChunkViewer videoId={videoInfo.video_id} />
+            <div className='flex justify-between items-center mb-4'>
+              <h3 className='text-lg font-semibold'>Video Chunks</h3>
+              {hasSubtitles && (
+                <span className='text-sm text-green-600 font-medium'>
+                  ✓ Subtitles available
+                </span>
+              )}
+            </div>
+            <ChunkViewer
+              key={chunkViewerKey.current}
+              videoId={videoInfo.video_id}
+            />
           </div>
         )}
 

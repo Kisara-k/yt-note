@@ -62,8 +62,13 @@ def get_prompt(field_name: str, chunk_text: str) -> str:
 
 
 def get_all_prompts() -> dict:
-    """Get all prompt configurations"""
-    return PROMPTS.copy()
+    """Get all prompt templates as a flat dict"""
+    return {
+        'title': PROMPTS['short_title']['template'],
+        'field_1': PROMPTS['ai_field_1']['template'],
+        'field_2': PROMPTS['ai_field_2']['template'],
+        'field_3': PROMPTS['ai_field_3']['template']
+    }
 
 
 def get_prompt_label(field_name: str) -> str:

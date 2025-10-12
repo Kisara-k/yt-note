@@ -24,7 +24,7 @@ from openai_api.enrichment import enrich_chunk, enrich_chunks_parallel
 
 # Import from db
 from db.youtube_crud import create_or_update_video, get_video_by_id, bulk_create_or_update_videos
-from db.subtitle_chunks_crud import create_chunk, get_chunks_by_video
+from db.subtitle_chunks_crud import create_chunk, get_chunks_by_video, delete_chunks_by_video, update_chunk_ai_fields, bulk_create_chunks, bulk_update_ai_fields
 from db.video_notes_crud import create_or_update_note, get_note_by_video_id
 
 
@@ -140,6 +140,151 @@ def process_chunks_enrichment_parallel(chunks: List[Dict[str, Any]]) -> List[Dic
     return enriched
 
 
+def process_video_subtitles_only(video_id: str) -> Dict[str, Any]:
+    """
+    Extract and save subtitles for a video (without AI enrichment)
+    Deletes existing chunks before processing
+    
+    Returns: Dict with success status and chunk count
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"Processing subtitles for video: {video_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Delete existing chunks
+        print("[1/3] Deleting existing chunks...", flush=True)
+        delete_chunks_by_video(video_id)
+        print("Existing chunks deleted\n", flush=True)
+        
+        # Step 2: Extract subtitles
+        print("[2/3] Extracting and chunking subtitles...", flush=True)
+        chunks = process_video_subtitles(video_id)
+        
+        if not chunks:
+            print("No subtitles available", flush=True)
+            return {"success": False, "chunk_count": 0, "error": "No subtitles available"}
+        
+        print(f"Created {len(chunks)} chunks\n", flush=True)
+        
+        # Step 3: Save to database in ONE BULK OPERATION (not a loop)
+        print("[3/3] Saving all chunks to database (bulk operation)...", flush=True)
+        
+        # Prepare chunks for bulk insert
+        chunks_for_db = [
+            {
+                'video_id': video_id,
+                'chunk_id': i,
+                'chunk_text': chunk['text'],
+                'short_title': None,
+                'ai_field_1': None,
+                'ai_field_2': None,
+                'ai_field_3': None
+            }
+            for i, chunk in enumerate(chunks)
+        ]
+        
+        # Single database transaction for all chunks
+        result = bulk_create_chunks(chunks_for_db)
+        
+        if not result:
+            print("Failed to save chunks to database", flush=True)
+            return {"success": False, "chunk_count": 0, "error": "Database save failed"}
+        
+        print(f"Saved {len(chunks)} chunks in single transaction", flush=True)
+        print(f"\n{'='*70}", flush=True)
+        print("Subtitle processing complete!", flush=True)
+        print(f"{'='*70}\n", flush=True)
+        
+        return {"success": True, "chunk_count": len(chunks)}
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "chunk_count": 0, "error": str(e)}
+
+
+def process_ai_enrichment_only(video_id: str) -> bool:
+    """
+    Enrich existing subtitle chunks with AI
+    Only processes chunks that don't have AI fields yet
+    
+    Returns: True if successful
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"AI Enrichment for video: {video_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Get chunks from database
+        print("[1/3] Loading chunks from database...", flush=True)
+        chunks = get_chunks_by_video(video_id)
+        
+        if not chunks:
+            print("No chunks found. Please process subtitles first.", flush=True)
+            return False
+        
+        print(f"Found {len(chunks)} chunks\n", flush=True)
+        
+        # Step 2: Enrich with AI (parallel)
+        print("[2/3] Enriching chunks with AI (parallel)...", flush=True)
+        
+        # Convert DB chunks to format expected by enrichment
+        chunks_for_enrichment = [
+            {
+                'text': chunk['chunk_text'],
+                'word_count': len(chunk['chunk_text'].split()),
+                'sentence_count': chunk['chunk_text'].count('.') + chunk['chunk_text'].count('!') + chunk['chunk_text'].count('?')
+            }
+            for chunk in chunks
+        ]
+        
+        enriched_chunks = process_chunks_enrichment_parallel(chunks_for_enrichment)
+        print(f"Enriched {len(enriched_chunks)} chunks\n", flush=True)
+        
+        # Step 3: Update database with AI fields (targeted updates)
+        # Note: Uses UPDATE loop instead of bulk upsert because chunk_text is 5-10x larger than AI fields
+        # Sending only AI fields in N updates is more efficient than fetching + re-uploading chunk_text
+        print("[3/3] Updating database with AI fields (targeted updates)...", flush=True)
+        
+        # Prepare enriched data with chunk_ids for bulk update
+        enriched_with_ids = [
+            {
+                'chunk_id': i,
+                'title': enriched.get('title', ''),
+                'field_1': enriched.get('field_1', ''),
+                'field_2': enriched.get('field_2', ''),
+                'field_3': enriched.get('field_3', '')
+            }
+            for i, enriched in enumerate(enriched_chunks)
+        ]
+        
+        # Single database transaction for all chunk updates
+        result = bulk_update_ai_fields(video_id, enriched_with_ids)
+        
+        if not result:
+            print("Failed to update chunks in database", flush=True)
+            return False
+        
+        print(f"Updated {len(enriched_chunks)} chunks with targeted updates", flush=True)
+        print(f"\n{'='*70}", flush=True)
+        print("AI enrichment complete!", flush=True)
+        print(f"{'='*70}\n", flush=True)
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def process_full_video(video_id: str) -> bool:
     """
     Complete video processing pipeline:
@@ -149,50 +294,23 @@ def process_full_video(video_id: str) -> bool:
     
     Returns: True if successful
     """
-    print(f"\n{'='*70}")
-    print(f"Processing video: {video_id}")
-    print(f"{'='*70}\n")
+    print(f"\n{'='*70}", flush=True)
+    print(f"Processing video: {video_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
     
     try:
-        # Step 1: Extract subtitles
-        print("[1/3] Extracting subtitles...")
-        chunks = process_video_subtitles(video_id)
-        
-        if not chunks:
-            print("No subtitles available")
+        # Step 1: Process subtitles
+        success = process_video_subtitles_only(video_id)
+        if not success:
             return False
         
-        print(f"Created {len(chunks)} chunks\n")
+        # Step 2: Enrich with AI
+        success = process_ai_enrichment_only(video_id)
         
-        # Step 2: Enrich with AI (parallel)
-        print("[2/3] Enriching chunks with AI (parallel)...")
-        enriched_chunks = process_chunks_enrichment_parallel(chunks)
-        print(f"Enriched {len(enriched_chunks)} chunks\n")
-        
-        # Step 3: Save to database
-        print("[3/3] Saving to database...")
-        for i, chunk in enumerate(enriched_chunks):
-            create_chunk(
-                video_id=video_id,
-                chunk_id=i,
-                chunk_text=chunk['text'],
-                word_count=chunk['word_count'],
-                sentence_count=chunk['sentence_count'],
-                short_title=chunk.get('title', ''),
-                ai_field_1=chunk.get('field_1', ''),
-                ai_field_2=chunk.get('field_2', ''),
-                ai_field_3=chunk.get('field_3', '')
-            )
-        
-        print(f"Saved {len(enriched_chunks)} chunks")
-        print(f"\n{'='*70}")
-        print("Processing complete!")
-        print(f"{'='*70}\n")
-        
-        return True
+        return success
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", flush=True)
         import traceback
         traceback.print_exc()
         return False

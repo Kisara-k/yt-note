@@ -21,7 +21,9 @@ from orchestrator import (
     process_video_metadata,
     process_batch_metadata,
     process_full_video,
-    process_multiple_videos_parallel
+    process_multiple_videos_parallel,
+    process_video_subtitles_only,
+    process_ai_enrichment_only
 )
 
 # Import from auth and db directly
@@ -117,6 +119,33 @@ async def get_video(request: VideoRequest, current_user: dict = Depends(get_curr
                 raise HTTPException(status_code=404, detail="Video not found")
             
             video = get_video_by_id(video_id)
+        
+        return VideoResponse(
+            video_id=video['id'],
+            title=video['title'],
+            channel_title=video['channel_title'],
+            channel_id=video['channel_id'],
+            published_at=video.get('published_at'),
+            description=video.get('description'),
+            duration=video.get('duration'),
+            view_count=video.get('view_count'),
+            like_count=video.get('like_count')
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/video/{video_id}", response_model=VideoResponse)
+async def get_video_by_id_endpoint(video_id: str, current_user: dict = Depends(get_current_user)):
+    """Get video metadata by video ID from database"""
+    try:
+        video = get_video_by_id(video_id)
+        
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found in database")
         
         return VideoResponse(
             video_id=video['id'],
@@ -258,10 +287,16 @@ async def process_video_endpoint(request: VideoRequest, current_user: dict = Dep
         
         # Process in background
         def background_task():
+            import sys
+            # Force unbuffered output (try line buffering first, fall back to full unbuffering)
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass  # reconfigure might not work on all systems
             try:
                 process_full_video(video_id)
             except Exception as e:
-                print(f"Background error: {e}")
+                print(f"Background error: {e}", flush=True)
                 import traceback
                 traceback.print_exc()
         
@@ -270,6 +305,103 @@ async def process_video_endpoint(request: VideoRequest, current_user: dict = Dep
         
         return {
             "message": "Video processing started",
+            "video_id": video_id,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/process-subtitles")
+async def process_subtitles_endpoint(request: VideoRequest, current_user: dict = Depends(get_current_user)):
+    """Process subtitles only: download and chunk (background)"""
+    try:
+        from youtube import extract_video_id
+        video_id = extract_video_id(request.video_url)
+        
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid video URL")
+        
+        # Ensure video metadata exists
+        video = get_video_by_id(video_id)
+        if not video:
+            metadata = process_video_metadata(request.video_url)
+            if not metadata:
+                raise HTTPException(status_code=404, detail="Video not found")
+        
+        # Store result in a shared dict
+        result_holder = {"result": None}
+        
+        # Process in background
+        def background_task():
+            import sys
+            # Force unbuffered output (try line buffering first, fall back to full unbuffering)
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass  # reconfigure might not work on all systems
+            try:
+                result = process_video_subtitles_only(video_id)
+                result_holder["result"] = result
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+                result_holder["result"] = {"success": False, "chunk_count": 0, "error": str(e)}
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": "Subtitle processing started",
+            "video_id": video_id,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/process-ai-enrichment")
+async def process_ai_enrichment_endpoint(request: VideoRequest, current_user: dict = Depends(get_current_user)):
+    """Process AI enrichment only: enrich existing chunks (background)"""
+    try:
+        from youtube import extract_video_id
+        video_id = extract_video_id(request.video_url)
+        
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid video URL")
+        
+        # Check if chunks exist
+        chunks = get_chunks_by_video(video_id)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="No subtitle chunks found. Please process subtitles first.")
+        
+        # Process in background
+        def background_task():
+            import sys
+            # Force unbuffered output (try line buffering first, fall back to full unbuffering)
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass  # reconfigure might not work on all systems
+            try:
+                process_ai_enrichment_only(video_id)
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": "AI enrichment started",
             "video_id": video_id,
             "status": "processing"
         }
@@ -297,10 +429,16 @@ async def process_video_no_auth(request: VideoRequest):
                 raise HTTPException(status_code=404, detail="Video not found")
         
         def background_task():
+            import sys
+            # Force unbuffered output (try line buffering first, fall back to full unbuffering)
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass  # reconfigure might not work on all systems
             try:
                 process_full_video(video_id)
             except Exception as e:
-                print(f"Background error: {e}")
+                print(f"Background error: {e}", flush=True)
                 import traceback
                 traceback.print_exc()
         

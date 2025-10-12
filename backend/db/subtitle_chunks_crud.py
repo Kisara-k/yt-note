@@ -34,8 +34,6 @@ def create_chunk(
         video_id: YouTube video ID
         chunk_id: Chunk identifier (0-indexed)
         chunk_text: Full text content of the chunk
-        word_count: Number of words in chunk (NOT saved to database)
-        sentence_count: Number of sentences in chunk (NOT saved to database)
         short_title: AI-generated short title (optional)
         ai_field_1: AI field 1 (optional)
         ai_field_2: AI field 2 (optional)
@@ -45,8 +43,6 @@ def create_chunk(
         Created chunk record or None on error
     """
     try:
-        # NOTE: word_count and sentence_count are NOT saved to database
-        # start_time and end_time are legacy columns - we set them to 0 as placeholders
         chunk_data = {
             'video_id': video_id,
             'chunk_id': chunk_id,
@@ -154,19 +150,19 @@ def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
 
 def get_chunk_index(video_id: str) -> List[Dict[str, Any]]:
     """
-    Get chunk index (chunk_id, start_time, end_time, short_title) for a video
+    Get chunk index (chunk_id, short_title) for a video
     Used for dropdown display
     
     Args:
         video_id: YouTube video ID
         
     Returns:
-        List of {chunk_id, start_time, end_time, short_title} records
+        List of {chunk_id, short_title} records
     """
     try:
         print(f"[DB->] SELECT chunk_index WHERE video_id={video_id}")
         response = supabase.table("subtitle_chunks").select(
-            "chunk_id, start_time, end_time, short_title"
+            "chunk_id, short_title"
         ).eq("video_id", video_id).order("chunk_id").execute()
         
         result = response.data if response.data else []
@@ -236,7 +232,7 @@ def bulk_create_chunks(chunks: List[Dict[str, Any]]) -> Optional[List[Dict[str, 
     
     Args:
         chunks: List of chunk dictionaries with required fields:
-                video_id, chunk_id, start_time, end_time, chunk_text
+                video_id, chunk_id, chunk_text
         
     Returns:
         List of created chunks or None on error
@@ -261,6 +257,57 @@ def bulk_create_chunks(chunks: List[Dict[str, Any]]) -> Optional[List[Dict[str, 
             return response.data
         else:
             print(f"[DB!!] Failed to create chunks")
+            return None
+            
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
+def bulk_update_ai_fields(video_id: str, enriched_chunks: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+    """
+    Update AI fields for multiple chunks using targeted UPDATE statements
+    
+    NOTE: Uses a loop instead of bulk upsert because:
+    - Chunk text is 5-10x larger than AI fields
+    - UPDATE only sends small AI fields (~400 chars/chunk)
+    - UPSERT would require fetching + re-uploading chunk_text (~1400 chars/chunk)
+    - Loop with small updates is more efficient than bulk with large data
+    
+    Args:
+        video_id: YouTube video ID
+        enriched_chunks: List of dicts with chunk_id and AI fields (title, field_1, field_2, field_3)
+        
+    Returns:
+        List of updated chunks or None on error
+    """
+    try:
+        print(f"[DB->] Updating AI fields for {len(enriched_chunks)} chunks (targeted updates)")
+        
+        updated_chunks = []
+        for chunk in enriched_chunks:
+            # Update only AI fields - no need to send chunk_text
+            update_data = {
+                'short_title': chunk.get('title', ''),
+                'ai_field_1': chunk.get('field_1', ''),
+                'ai_field_2': chunk.get('field_2', ''),
+                'ai_field_3': chunk.get('field_3', '')
+            }
+            
+            response = supabase.table("subtitle_chunks").update(update_data).eq(
+                'video_id', video_id
+            ).eq(
+                'chunk_id', chunk['chunk_id']
+            ).execute()
+            
+            if response.data and len(response.data) > 0:
+                updated_chunks.extend(response.data)
+        
+        if updated_chunks:
+            print(f"[DB<-] Updated {len(updated_chunks)} chunks with AI fields")
+            return updated_chunks
+        else:
+            print(f"[DB!!] Failed to update chunks")
             return None
             
     except Exception as e:
