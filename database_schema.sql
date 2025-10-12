@@ -91,6 +91,9 @@ CREATE TABLE subtitle_chunks (
     ai_field_2 TEXT,  -- Key points
     ai_field_3 TEXT,  -- Topics/themes
     
+    -- User notes
+    note_content TEXT,  -- User-written markdown notes
+    
     -- Timestamp
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     
@@ -105,6 +108,7 @@ COMMENT ON COLUMN subtitle_chunks.short_title IS 'AI-generated short title (NULL
 COMMENT ON COLUMN subtitle_chunks.ai_field_1 IS 'AI-generated high-level summary (NULL if not processed)';
 COMMENT ON COLUMN subtitle_chunks.ai_field_2 IS 'AI-generated key points (NULL if not processed)';
 COMMENT ON COLUMN subtitle_chunks.ai_field_3 IS 'AI-generated topics/themes (NULL if not processed)';
+COMMENT ON COLUMN subtitle_chunks.note_content IS 'User-written markdown notes for this chunk';
 
 -- ============================================================
 -- TABLE: video_notes

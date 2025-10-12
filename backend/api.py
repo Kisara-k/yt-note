@@ -39,7 +39,8 @@ from db.subtitle_chunks_crud import (
     get_chunks_by_video,
     get_chunk_index,
     get_chunk_details,
-    load_chunks_text
+    load_chunks_text,
+    update_chunk_note
 )
 
 app = FastAPI(title="YouTube Notes API", version="2.0.0")
@@ -283,6 +284,38 @@ async def get_chunk(video_id: str, chunk_id: int, include_text: bool = True, cur
             raise HTTPException(status_code=404, detail="Chunk not found")
         
         return chunk
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ChunkNoteRequest(BaseModel):
+    note_content: str
+
+
+@app.put("/api/chunks/{video_id}/{chunk_id}/note")
+async def update_chunk_note_endpoint(
+    video_id: str, 
+    chunk_id: int, 
+    request: ChunkNoteRequest, 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update the markdown note content for a specific chunk
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        request: ChunkNoteRequest with note_content
+    """
+    try:
+        updated_chunk = update_chunk_note(video_id, chunk_id, request.note_content)
+        
+        if not updated_chunk:
+            raise HTTPException(status_code=404, detail="Chunk not found")
+        
+        return updated_chunk
     except HTTPException:
         raise
     except Exception as e:

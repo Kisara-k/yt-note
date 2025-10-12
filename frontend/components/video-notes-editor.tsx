@@ -849,11 +849,11 @@ export function VideoNotesEditor() {
               />
             </div>
 
-            {hasUnsavedChanges && (
+            {/* {hasUnsavedChanges && (
               <p className='text-sm text-muted-foreground'>
                 You have unsaved changes. Click "Save Note" to save your work.
               </p>
-            )}
+            )} */}
           </div>
         )}
 

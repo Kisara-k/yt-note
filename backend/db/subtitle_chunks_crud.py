@@ -174,6 +174,42 @@ def update_chunk_ai_fields(
         return None
 
 
+def update_chunk_note(
+    video_id: str,
+    chunk_id: int,
+    note_content: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Update user note content for a chunk
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        note_content: Markdown content of the note
+        
+    Returns:
+        Updated chunk record or None on error
+    """
+    try:
+        update_data = {'note_content': note_content}
+        
+        print(f"[DB->] UPDATE subtitle_chunks note_content (video={video_id}, chunk={chunk_id}, len={len(note_content)})")
+        response = supabase.table("subtitle_chunks").update(
+            update_data
+        ).eq("video_id", video_id).eq("chunk_id", chunk_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"[DB<-] Updated note for chunk {chunk_id}")
+            return response.data[0]
+        else:
+            print(f"[DB!!] No chunk found: {video_id}/{chunk_id}")
+            return None
+            
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
 def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
     """
     Get all chunks for a video
