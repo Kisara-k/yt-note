@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
@@ -296,6 +296,7 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
                   size='sm'
                   onClick={saveChunkNote}
                   disabled={isSavingNote || !hasUnsavedChanges}
+                  variant='default'
                 >
                   {isSavingNote ? (
                     <>
@@ -303,7 +304,10 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
                       Saving...
                     </>
                   ) : (
-                    'Save Note'
+                    <>
+                      <Save className='mr-2 h-4 w-4' />
+                      Save Note
+                    </>
                   )}
                 </Button>
               </div>

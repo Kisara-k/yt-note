@@ -715,7 +715,7 @@ export function VideoNotesEditor() {
             <Button
               onClick={handleFetchVideo}
               disabled={loading || !videoUrl.trim()}
-              className='min-w-[120px]'
+              className='w-[110px]'
             >
               {loading ? (
                 <>
@@ -725,7 +725,7 @@ export function VideoNotesEditor() {
               ) : (
                 <>
                   <Video className='mr-2 h-4 w-4' />
-                  Load Video
+                  Load YT
                 </>
               )}
             </Button>
@@ -786,7 +786,7 @@ export function VideoNotesEditor() {
                     disabled={processingSubtitles}
                     size='sm'
                     variant='outline'
-                    className='justify-start'
+                    className='w-[110px] justify-start'
                   >
                     {processingSubtitles ? (
                       <>
@@ -805,7 +805,7 @@ export function VideoNotesEditor() {
                     disabled={!hasSubtitles || processingAI}
                     size='sm'
                     variant='default'
-                    className='justify-start'
+                    className='w-[110px] justify-start'
                   >
                     {processingAI ? (
                       <>
@@ -837,6 +837,8 @@ export function VideoNotesEditor() {
                 onClick={handleSaveNote}
                 disabled={saving || !hasUnsavedChanges}
                 variant='default'
+                size='sm'
+                className='w-[110px]'
               >
                 {saving ? (
                   <>
@@ -877,11 +879,11 @@ export function VideoNotesEditor() {
           <div className='mb-6'>
             <div className='flex justify-between items-center mb-4'>
               <h3 className='text-lg font-semibold'>Video Chunks</h3>
-              {hasSubtitles && (
+              {/* {hasSubtitles && (
                 <span className='text-sm text-green-600 font-medium'>
                   ✓ Subtitles available
                 </span>
-              )}
+              )} */}
             </div>
             <ChunkViewer
               key={chunkViewerKey.current}
