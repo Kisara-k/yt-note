@@ -174,38 +174,38 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
         <div className='space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <Card>
-              <CardHeader>
-                <CardTitle className='text-sm'>Chunk Text</CardTitle>
-              </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-sm'>
-                {chunkDetails.chunk_text || 'Not available'}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
+              <CardHeader className='p-3 pb-2'>
                 <CardTitle className='text-sm'>Summary</CardTitle>
               </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-sm'>
+              <CardContent className='max-h-64 overflow-y-auto text-sm'>
                 {chunkDetails.ai_field_1 || 'Not available'}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className='p-3 pb-2'>
                 <CardTitle className='text-sm'>Key Points</CardTitle>
               </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-sm'>
+              <CardContent className='max-h-64 overflow-y-auto text-sm'>
                 {chunkDetails.ai_field_2 || 'Not available'}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className='p-3 pb-2'>
                 <CardTitle className='text-sm'>Topics</CardTitle>
               </CardHeader>
               <CardContent className='max-h-48 overflow-y-auto text-sm'>
                 {chunkDetails.ai_field_3 || 'Not available'}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className='p-3 pb-2'>
+                <CardTitle className='text-sm'>Chunk Text</CardTitle>
+              </CardHeader>
+              <CardContent className='max-h-48 overflow-y-auto text-sm'>
+                {chunkDetails.chunk_text || 'Not available'}
               </CardContent>
             </Card>
           </div>

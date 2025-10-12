@@ -245,9 +245,12 @@ export function VideoFilter() {
       <div className='max-w-7xl mx-auto space-y-6'>
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Filter Videos</h1>
-          <Link href='/'>
-            <Button variant='outline'>Back to Notes</Button>
-          </Link>
+          <div className='flex-1 flex justify-center'>
+            <Link href='/'>
+              <Button variant='outline'>Back to Notes</Button>
+            </Link>
+          </div>
+          <div className='w-[140px]'></div>
         </div>
 
         <Card>

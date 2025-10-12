@@ -541,17 +541,133 @@ export function VideoNotesEditor() {
     }
   };
 
+  const extractVideoId = (input: string): string | null => {
+    // If it's already just a video ID (11 characters, alphanumeric with hyphens and underscores)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(input.trim())) {
+      return input.trim();
+    }
+
+    // Try to extract from various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    return null;
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    const videoId = extractVideoId(pastedText);
+
+    if (videoId) {
+      // Valid video ID found, attempt to load it
+      e.preventDefault(); // Prevent default paste
+      setVideoUrl(pastedText); // Keep the pasted content in the box
+
+      // Automatically fetch the video
+      setTimeout(async () => {
+        setLoading(true);
+        try {
+          const token = await getAccessToken();
+          if (!token) {
+            setLoading(false);
+            return;
+          }
+
+          const videoResponse = await fetch('http://localhost:8000/api/video', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ video_url: pastedText }),
+          });
+
+          if (!videoResponse.ok) {
+            // If failed, keep the pasted content but don't change the loaded video
+            const error = await videoResponse.json();
+            console.error('Failed to load video:', error);
+            setLoading(false);
+            return;
+          }
+
+          const videoData: VideoInfo = await videoResponse.json();
+
+          const notePromise = fetch(
+            `http://localhost:8000/api/note/${videoData.video_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          )
+            .then(async (response) => {
+              if (response.ok) {
+                const noteData: NoteData = await response.json();
+                return noteData.note_content || '';
+              }
+              return '';
+            })
+            .catch(() => '');
+
+          const loadedNote = await notePromise;
+          setNoteContent(loadedNote);
+          setInitialLoadedContent(loadedNote);
+          setVideoInfo(videoData);
+          router.push(`/?v=${videoData.video_id}`, { scroll: false });
+
+          await checkSubtitles(videoData.video_id);
+          chunkViewerKey.current += 1;
+          setHasUnsavedChanges(false);
+        } catch (error) {
+          console.error('Error fetching video on paste:', error);
+        } finally {
+          setLoading(false);
+        }
+      }, 0);
+    }
+    // If not valid, let the default paste happen and keep content in box
+  };
+
   return (
     <div className='min-h-screen bg-background'>
-      <div className='container mx-auto p-6 max-w-6xl'>
+      <div className='container mx-auto p-6 max-w-7xl'>
         <div className='mb-8'>
           <div className='flex justify-between items-center mb-4'>
-            <div>
-              <h1 className='text-3xl font-bold mb-2'>YouTube Notes</h1>
+            <div className='flex items-center gap-4'>
               <p className='text-muted-foreground'>
                 Enter a YouTube video URL or ID to create notes
               </p>
             </div>
+
+            {/* Navigation Buttons - Centered */}
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => router.push('/filter')}
+              >
+                <Filter className='mr-2 h-4 w-4' />
+                All Videos
+              </Button>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => router.push('/creator-notes')}
+              >
+                <User className='mr-2 h-4 w-4' />
+                Creators
+              </Button>
+            </div>
+
             <div className='flex items-center gap-4'>
               <div className='text-sm text-muted-foreground'>
                 Signed in as <strong>{user?.email}</strong>
@@ -561,26 +677,6 @@ export function VideoNotesEditor() {
                 Sign Out
               </Button>
             </div>
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className='flex gap-2'>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => router.push('/filter')}
-            >
-              <Filter className='mr-2 h-4 w-4' />
-              Browse All Videos
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => router.push('/creator-notes')}
-            >
-              <User className='mr-2 h-4 w-4' />
-              Creator Notes
-            </Button>
           </div>
         </div>
 
@@ -598,6 +694,7 @@ export function VideoNotesEditor() {
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 disabled={loading}
                 className='text-base'
               />
@@ -623,56 +720,60 @@ export function VideoNotesEditor() {
 
           {/* Video Info Display */}
           {videoInfo && (
-            <div className='bg-card border rounded-lg p-4 space-y-3'>
-              <div className='flex justify-between items-start'>
-                <div className='space-y-2 flex-1'>
-                  <h2 className='text-xl font-semibold'>{videoInfo.title}</h2>
-                  <div className='flex gap-4 text-sm text-muted-foreground'>
-                    <span>{videoInfo.channel_title}</span>
-                    {videoInfo.duration && (
-                      <span>
-                        {(() => {
-                          // Convert ISO 8601 duration (PT1H2M3S) to HH:MM:SS or MM:SS
-                          const match = videoInfo.duration.match(
-                            /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
-                          );
-                          if (!match) return videoInfo.duration;
+            <div className='space-y-3'>
+              <div className='flex gap-3'>
+                <div className='bg-card border rounded-lg p-4 flex-1'>
+                  <div className='space-y-2'>
+                    <h2 className='text-xl font-semibold'>{videoInfo.title}</h2>
+                    <div className='flex gap-4 text-sm text-muted-foreground'>
+                      <span>{videoInfo.channel_title}</span>
+                      {videoInfo.duration && (
+                        <span>
+                          {(() => {
+                            // Convert ISO 8601 duration (PT1H2M3S) to HH:MM:SS or MM:SS
+                            const match = videoInfo.duration.match(
+                              /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
+                            );
+                            if (!match) return videoInfo.duration;
 
-                          const hours = parseInt(match[1] || '0', 10);
-                          const minutes = parseInt(match[2] || '0', 10);
-                          const seconds = parseInt(match[3] || '0', 10);
+                            const hours = parseInt(match[1] || '0', 10);
+                            const minutes = parseInt(match[2] || '0', 10);
+                            const seconds = parseInt(match[3] || '0', 10);
 
-                          if (hours > 0) {
-                            return `${hours}:${minutes
-                              .toString()
-                              .padStart(2, '0')}:${seconds
-                              .toString()
-                              .padStart(2, '0')}`;
-                          } else {
-                            return `${minutes}:${seconds
-                              .toString()
-                              .padStart(2, '0')}`;
-                          }
-                        })()}
-                      </span>
-                    )}
-                    {videoInfo.view_count && (
-                      <span>{videoInfo.view_count.toLocaleString()}</span>
-                    )}
-                    {videoInfo.like_count && (
-                      <span className='flex items-center gap-1'>
-                        <ThumbsUp className='h-3 w-3' />
-                        {videoInfo.like_count.toLocaleString()}
-                      </span>
-                    )}
+                            if (hours > 0) {
+                              return `${hours}:${minutes
+                                .toString()
+                                .padStart(2, '0')}:${seconds
+                                .toString()
+                                .padStart(2, '0')}`;
+                            } else {
+                              return `${minutes}:${seconds
+                                .toString()
+                                .padStart(2, '0')}`;
+                            }
+                          })()}
+                        </span>
+                      )}
+                      {videoInfo.view_count && (
+                        <span>{videoInfo.view_count.toLocaleString()}</span>
+                      )}
+                      {videoInfo.like_count && (
+                        <span className='flex items-center gap-1'>
+                          <ThumbsUp className='h-3 w-3' />
+                          {videoInfo.like_count.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className='flex gap-2'>
+
+                <div className='flex flex-col gap-2'>
                   <Button
                     onClick={handleProcessSubtitles}
                     disabled={processingSubtitles}
                     size='sm'
                     variant='outline'
+                    className='justify-start'
                   >
                     {processingSubtitles ? (
                       <>
@@ -682,7 +783,7 @@ export function VideoNotesEditor() {
                     ) : (
                       <>
                         <PlayCircle className='mr-2 h-4 w-4' />
-                        Process Subtitles
+                        Subtitles
                       </>
                     )}
                   </Button>
@@ -691,6 +792,7 @@ export function VideoNotesEditor() {
                     disabled={!hasSubtitles || processingAI}
                     size='sm'
                     variant='default'
+                    className='justify-start'
                   >
                     {processingAI ? (
                       <>
@@ -700,7 +802,7 @@ export function VideoNotesEditor() {
                     ) : (
                       <>
                         <PlayCircle className='mr-2 h-4 w-4' />
-                        AI Enrichment
+                        AI
                       </>
                     )}
                   </Button>
@@ -710,29 +812,9 @@ export function VideoNotesEditor() {
           )}
         </div>
 
-        {/* Chunks Section */}
-        {videoInfo && (
-          <div className='mb-6'>
-            <div className='flex justify-between items-center mb-4'>
-              <h3 className='text-lg font-semibold'>Video Chunks</h3>
-              {hasSubtitles && (
-                <span className='text-sm text-green-600 font-medium'>
-                  ✓ Subtitles available
-                </span>
-              )}
-            </div>
-            <ChunkViewer
-              key={chunkViewerKey.current}
-              videoId={videoInfo.video_id}
-            />
-          </div>
-        )}
-
-        {videoInfo && <Separator className='my-6' />}
-
         {/* Editor Section */}
         {videoInfo && (
-          <div className='space-y-4'>
+          <div className='space-y-4 mb-6'>
             <div className='flex justify-between items-center'>
               <Label className='text-lg font-semibold'>
                 Note{' '}
@@ -761,7 +843,7 @@ export function VideoNotesEditor() {
               <TiptapMarkdownEditor
                 value={noteContent}
                 onChange={handleEditorChange}
-                className='min-h-[500px]'
+                className='min-h-[150px]'
                 placeholder='Start writing your notes here...'
                 onInitialLoad={() => setHasUnsavedChanges(false)}
               />
@@ -772,6 +854,26 @@ export function VideoNotesEditor() {
                 You have unsaved changes. Click "Save Note" to save your work.
               </p>
             )}
+          </div>
+        )}
+
+        {videoInfo && <Separator className='my-6' />}
+
+        {/* Chunks Section */}
+        {videoInfo && (
+          <div className='mb-6'>
+            <div className='flex justify-between items-center mb-4'>
+              <h3 className='text-lg font-semibold'>Video Chunks</h3>
+              {hasSubtitles && (
+                <span className='text-sm text-green-600 font-medium'>
+                  ✓ Subtitles available
+                </span>
+              )}
+            </div>
+            <ChunkViewer
+              key={chunkViewerKey.current}
+              videoId={videoInfo.video_id}
+            />
           </div>
         )}
 

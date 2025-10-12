@@ -338,8 +338,10 @@ export function TiptapMarkdownEditor({
     content: value,
     editorProps: {
       attributes: {
-        class:
-          'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] p-5',
+        class: cn(
+          'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none p-5',
+          className
+        ),
       },
     },
     onUpdate: ({ editor }) => {
