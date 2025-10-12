@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Filter, X } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Loader2,
+  Filter,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
@@ -28,11 +43,22 @@ interface VideoInfo {
   tags: string[];
 }
 
+type SortField =
+  | 'title'
+  | 'channel_title'
+  | 'duration'
+  | 'view_count'
+  | 'published_at';
+type SortDirection = 'asc' | 'desc' | null;
+
 export function VideoFilter() {
   const [videos, setVideos] = useState<VideoInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [filters, setFilters] = useState({
     channel: '',
+    creator: '',
     minDuration: '',
     maxDuration: '',
     selectedTags: [] as string[],
@@ -105,16 +131,56 @@ export function VideoFilter() {
   const clearFilters = () => {
     setFilters({
       channel: '',
+      creator: '',
       minDuration: '',
       maxDuration: '',
       selectedTags: [],
     });
   };
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle through: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortDirection(null);
+        setSortField(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className='h-4 w-4' />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className='h-4 w-4' />;
+    }
+    return <ArrowDown className='h-4 w-4' />;
+  };
+
+  // Get unique channels for dropdown
+  const uniqueChannels = useMemo(() => {
+    const channels = [...new Set(videos.map((v) => v.channel_title))];
+    return channels.sort();
+  }, [videos]);
+
   const filteredVideos = videos.filter((video) => {
     if (
       filters.channel &&
       !video.channel_title.toLowerCase().includes(filters.channel.toLowerCase())
+    ) {
+      return false;
+    }
+
+    if (
+      filters.creator &&
+      filters.creator !== '__all__' &&
+      video.channel_title !== filters.creator
     ) {
       return false;
     }
@@ -145,6 +211,35 @@ export function VideoFilter() {
     return true;
   });
 
+  const sortedVideos = useMemo(() => {
+    if (!sortField || !sortDirection) {
+      return filteredVideos;
+    }
+
+    return [...filteredVideos].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      if (sortField === 'duration') {
+        aValue = parseDuration(a.duration);
+        bValue = parseDuration(b.duration);
+      } else if (sortField === 'view_count') {
+        aValue = a.view_count || 0;
+        bValue = b.view_count || 0;
+      } else if (sortField === 'published_at') {
+        aValue = new Date(a.published_at).getTime();
+        bValue = new Date(b.published_at).getTime();
+      } else {
+        aValue = a[sortField].toLowerCase();
+        bValue = b[sortField].toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredVideos, sortField, sortDirection]);
+
   return (
     <div className='min-h-screen bg-background p-6'>
       <div className='max-w-7xl mx-auto space-y-6'>
@@ -156,19 +251,16 @@ export function VideoFilter() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Filter className='h-5 w-5' />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-              <div>
-                <Label htmlFor='channel'>Channel Name</Label>
+          <CardContent className='pt-6 pb-4'>
+            <div className='grid grid-cols-1 md:grid-cols-12 gap-3 items-end'>
+              <div className='md:col-span-4'>
+                <Label htmlFor='channel' className='text-xs font-medium mb-1.5'>
+                  Channel Name
+                </Label>
                 <Input
                   id='channel'
                   placeholder='Search by channel...'
+                  className='h-9'
                   value={filters.channel}
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, channel: e.target.value }))
@@ -176,12 +268,42 @@ export function VideoFilter() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor='minDuration'>Min Duration (minutes)</Label>
+              <div className='md:col-span-4'>
+                <Label htmlFor='creator' className='text-xs font-medium mb-1.5'>
+                  Creator Filter
+                </Label>
+                <Select
+                  value={filters.creator}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, creator: value }))
+                  }
+                >
+                  <SelectTrigger id='creator' className='h-9'>
+                    <SelectValue placeholder='All creators' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='__all__'>All creators</SelectItem>
+                    {uniqueChannels.map((channel) => (
+                      <SelectItem key={channel} value={channel}>
+                        {channel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className='md:col-span-1'>
+                <Label
+                  htmlFor='minDuration'
+                  className='text-xs font-medium mb-1.5'
+                >
+                  Min
+                </Label>
                 <Input
                   id='minDuration'
                   type='number'
                   placeholder='0'
+                  className='h-9'
                   value={filters.minDuration}
                   onChange={(e) =>
                     setFilters((prev) => ({
@@ -192,12 +314,18 @@ export function VideoFilter() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor='maxDuration'>Max Duration (minutes)</Label>
+              <div className='md:col-span-1'>
+                <Label
+                  htmlFor='maxDuration'
+                  className='text-xs font-medium mb-1.5'
+                >
+                  Max
+                </Label>
                 <Input
                   id='maxDuration'
                   type='number'
                   placeholder='60'
+                  className='h-9'
                   value={filters.maxDuration}
                   onChange={(e) =>
                     setFilters((prev) => ({
@@ -207,16 +335,22 @@ export function VideoFilter() {
                   }
                 />
               </div>
+
+              <div className='md:col-span-1 flex justify-end'>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={clearFilters}
+                  className='h-9 px-3'
+                  title='Clear Filters'
+                >
+                  <X className='h-4 w-4' />
+                </Button>
+              </div>
             </div>
 
-            <div className='flex justify-between items-center'>
-              <div className='text-sm text-muted-foreground'>
-                Showing {filteredVideos.length} of {videos.length} videos
-              </div>
-              <Button variant='ghost' size='sm' onClick={clearFilters}>
-                <X className='h-4 w-4 mr-2' />
-                Clear Filters
-              </Button>
+            <div className='mt-3 text-xs text-muted-foreground'>
+              Showing {sortedVideos.length} of {videos.length} videos
             </div>
           </CardContent>
         </Card>
@@ -225,48 +359,117 @@ export function VideoFilter() {
           <div className='flex items-center justify-center p-12'>
             <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
           </div>
-        ) : (
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {filteredVideos.map((video) => (
-              <Card
-                key={video.id}
-                className='hover:shadow-lg transition-shadow'
-              >
-                <CardHeader>
-                  <CardTitle className='text-base line-clamp-2'>
-                    {video.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-2'>
-                  <div className='text-sm text-muted-foreground space-y-1'>
-                    <div>Channel: {video.channel_title}</div>
-                    <div>
-                      Duration: {formatDuration(parseDuration(video.duration))}
-                    </div>
-                    <div>Views: {video.view_count?.toLocaleString() || 0}</div>
-                  </div>
-                  <div className='flex flex-wrap gap-1 mt-2'>
-                    {video.tags?.slice(0, 3).map((tag: string) => (
-                      <span
-                        key={tag}
-                        className='text-xs bg-secondary px-2 py-1 rounded'
+        ) : sortedVideos.length > 0 ? (
+          <Card>
+            <CardContent className='p-0'>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className='w-[40%]'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 font-medium'
+                        onClick={() => handleSort('title')}
                       >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <Link href={`/?video=${video.id}`}>
-                    <Button className='w-full mt-2' size='sm'>
-                      View Video
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {!loading && filteredVideos.length === 0 && (
+                        Title
+                        {getSortIcon('title')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className='w-[15%]'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 font-medium'
+                        onClick={() => handleSort('channel_title')}
+                      >
+                        Channel
+                        {getSortIcon('channel_title')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className='w-[10%]'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 font-medium'
+                        onClick={() => handleSort('duration')}
+                      >
+                        Duration
+                        {getSortIcon('duration')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className='w-[10%]'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 font-medium'
+                        onClick={() => handleSort('view_count')}
+                      >
+                        Views
+                        {getSortIcon('view_count')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className='w-[10%]'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 font-medium'
+                        onClick={() => handleSort('published_at')}
+                      >
+                        Published
+                        {getSortIcon('published_at')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className='w-[15%]'>Tags</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedVideos.map((video) => (
+                    <TableRow key={video.id} className='h-12'>
+                      <TableCell className='font-medium py-2'>
+                        <Link
+                          href={`/?v=${video.id}`}
+                          className='line-clamp-2 hover:underline text-primary'
+                        >
+                          {video.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        {video.channel_title}
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        {formatDuration(parseDuration(video.duration))}
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        {video.view_count?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        {new Date(video.published_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        <div className='flex flex-wrap gap-1'>
+                          {video.tags?.slice(0, 2).map((tag: string) => (
+                            <span
+                              key={tag}
+                              className='text-xs bg-secondary px-2 py-0.5 rounded'
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {video.tags?.length > 2 && (
+                            <span className='text-xs text-muted-foreground'>
+                              +{video.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
           <Card>
             <CardContent className='p-12 text-center text-muted-foreground'>
               No videos match your filters. Try adjusting your search criteria.

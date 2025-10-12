@@ -19,7 +19,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface VideoInfo {
   video_id: string;
@@ -54,15 +54,24 @@ export function VideoNotesEditor() {
   const chunkViewerKey = useRef(0);
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Load video from localStorage on mount
+  // Load video from URL parameter or localStorage on mount
   useEffect(() => {
-    const savedVideoId = localStorage.getItem('currentVideoId');
-    if (savedVideoId && !videoInfo) {
-      // Auto-load the saved video
-      loadVideoById(savedVideoId);
+    // Check URL parameter first
+    const videoParam = searchParams.get('v');
+    if (videoParam) {
+      // Load video from URL parameter
+      loadVideoById(videoParam);
+    } else {
+      // Fall back to localStorage
+      const savedVideoId = localStorage.getItem('currentVideoId');
+      if (savedVideoId && !videoInfo) {
+        // Auto-load the saved video
+        loadVideoById(savedVideoId);
+      }
     }
-  }, []);
+  }, [searchParams]);
 
   // Save video to localStorage when it changes
   useEffect(() => {
@@ -204,6 +213,10 @@ export function VideoNotesEditor() {
 
       // Set video info after note is loaded
       setVideoInfo(videoData);
+
+      // Update URL parameter with the video ID
+      router.push(`/?v=${videoData.video_id}`, { scroll: false });
+
       // toast.success(`Loaded: ${videoData.title}`);
 
       if (loadedNote) {
@@ -618,32 +631,38 @@ export function VideoNotesEditor() {
                     <span>{videoInfo.channel_title}</span>
                     {videoInfo.duration && (
                       <span>
-                      {(() => {
-                        // Convert ISO 8601 duration (PT1H2M3S) to HH:MM:SS or MM:SS
-                        const match = videoInfo.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-                        if (!match) return videoInfo.duration;
-                        
-                        const hours = parseInt(match[1] || '0', 10);
-                        const minutes = parseInt(match[2] || '0', 10);
-                        const seconds = parseInt(match[3] || '0', 10);
-                        
-                        if (hours > 0) {
-                        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                        } else {
-                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                        }
-                      })()}
+                        {(() => {
+                          // Convert ISO 8601 duration (PT1H2M3S) to HH:MM:SS or MM:SS
+                          const match = videoInfo.duration.match(
+                            /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
+                          );
+                          if (!match) return videoInfo.duration;
+
+                          const hours = parseInt(match[1] || '0', 10);
+                          const minutes = parseInt(match[2] || '0', 10);
+                          const seconds = parseInt(match[3] || '0', 10);
+
+                          if (hours > 0) {
+                            return `${hours}:${minutes
+                              .toString()
+                              .padStart(2, '0')}:${seconds
+                              .toString()
+                              .padStart(2, '0')}`;
+                          } else {
+                            return `${minutes}:${seconds
+                              .toString()
+                              .padStart(2, '0')}`;
+                          }
+                        })()}
                       </span>
                     )}
                     {videoInfo.view_count && (
-                      <span>
-                      {videoInfo.view_count.toLocaleString()}
-                      </span>
+                      <span>{videoInfo.view_count.toLocaleString()}</span>
                     )}
                     {videoInfo.like_count && (
-                      <span className="flex items-center gap-1">
-                      <ThumbsUp className="h-3 w-3" />
-                      {videoInfo.like_count.toLocaleString()}
+                      <span className='flex items-center gap-1'>
+                        <ThumbsUp className='h-3 w-3' />
+                        {videoInfo.like_count.toLocaleString()}
                       </span>
                     )}
                   </div>
