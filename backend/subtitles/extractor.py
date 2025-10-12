@@ -58,16 +58,43 @@ def _clean_srt_to_text(srt_file: str) -> str:
 
 
 def _remove_filler_words(text: str) -> str:
-    """Remove common filler words"""
+    """Remove common filler words and repeated words while preserving meaning"""
+    # Common verbal fillers and hedging words that don't add meaning
     fillers = [
-        r'\buh+\b', r'\bum+\b', r'\blike\b', r'\byou know\b',
-        r'\bbasically\b', r'\bactually\b', r'\bliterally\b'
+        # Verbal fillers
+        r'\buh+\b', r'\bum+\b', r'\buhm+\b', r'\bah+\b', r'\beh+\b',
+        r'\ber+\b', r'\bhmm+\b',
+        
+        # Discourse markers (when overused)
+        r'\byou know\b', r'\bI mean\b', r'\bkind of\b', r'\bsort of\b',
+        r'\blike\b(?!\s+to\b)',  # Keep "like to" but remove filler "like"
+        
+        # Unnecessary qualifiers (context-dependent, use sparingly)
+        r'\bbasically\b', r'\bactually\b', r'\bliterally\b', 
+        r'\bpretty much\b', r'\bmore or less\b',
+        
+        # Redundant phrases
+        r'\bat the end of the day\b', r'\bto be honest\b', r'\bto tell you the truth\b',
+        r'\bif you will\b', r'\bso to speak\b',
+        
+        # Starting phrases (context-dependent)
+        r'\bwell,?\s+', r'\bso,?\s+(?!that\b|what\b|when\b|where\b|who\b|why\b|how\b)',  # Keep "so that", "so what" etc.
+        r'\balright,?\s+', r'\bokay,?\s+', r'\bright,?\s+',
+        
+        # Thinking indicators
+        r'\blet me see\b', r'\blet\'s see\b', r'\bwhat else\b'
     ]
     
     for filler in fillers:
         text = re.sub(filler, '', text, flags=re.IGNORECASE)
     
-    return ' '.join(text.split())
+    # Remove repeated consecutive words (stuttering or emphasis)
+    text = re.sub(r'\b(\w+)(\s+\1\b)+', r'\1', text, flags=re.IGNORECASE)
+    
+    # Clean up multiple spaces and normalize whitespace
+    text = ' '.join(text.split())
+    
+    return text
 
 
 def _split_into_sentences(text: str, words_per_segment: int = 40) -> List[str]:
