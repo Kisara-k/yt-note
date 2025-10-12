@@ -1,0 +1,79 @@
+# ===================================================
+# Core Web Framework & Server
+# ===================================================
+fastapi==0.115.5                # Web framework for building APIs
+uvicorn[standard]==0.32.1       # ASGI server for FastAPI (includes websockets, httptools)
+pydantic==2.10.3                # Data validation and settings management
+
+# ===================================================
+# Database & Storage
+# ===================================================
+supabase==2.9.0                 # Supabase Python client for database operations
+psycopg2-binary==2.9.10         # PostgreSQL adapter (required for direct DB connections)
+
+# ===================================================
+# YouTube Data & Subtitles
+# ===================================================
+google-api-python-client==2.156.0  # YouTube Data API v3 client
+yt-dlp==2024.12.13              # YouTube video downloader and subtitle extractor
+
+# ===================================================
+# AI & OpenAI
+# ===================================================
+openai==1.58.1                  # OpenAI API client for GPT models
+
+# ===================================================
+# Authentication & Security
+# ===================================================
+PyJWT==2.9.0                    # JSON Web Token implementation for auth
+cryptography==44.0.0            # Required by PyJWT for secure algorithms
+
+# ===================================================
+# Environment & Configuration
+# ===================================================
+python-dotenv==1.0.1            # Load environment variables from .env files
+
+# ===================================================
+# HTTP Client (for API calls)
+# ===================================================
+httpx==0.28.1                   # Modern async HTTP client (used by Supabase)
+
+# ===================================================
+# Google API Dependencies (auto-installed with google-api-python-client)
+# ===================================================
+# google-auth==2.36.0           # Authentication for Google APIs
+# google-auth-httplib2==0.2.0   # HTTP library integration
+# google-auth-oauthlib==1.2.1   # OAuth 2.0 integration
+# googleapis-common-protos==1.66.0  # Common protocol buffers
+# uritemplate==4.1.1            # URI template parsing
+
+# ===================================================
+# Additional Dependencies (auto-installed)
+# ===================================================
+# typing-extensions>=4.7.1      # Type hints backports (required by pydantic)
+# annotated-types>=0.6.0        # Runtime support for annotations
+# anyio>=3.0.0                  # Async compatibility layer (required by httpx)
+# certifi>=2024.0.0             # SSL certificates
+# h11>=0.14.0                   # HTTP/1.1 protocol implementation
+# idna>=3.0                     # Internationalized domain names
+# sniffio>=1.0.0                # Async library detection
+# click>=7.0                    # CLI framework (required by uvicorn)
+# python-multipart>=0.0.20      # Form/file upload support (required by FastAPI)
+
+# ===================================================
+# Development & Testing (optional - uncomment if needed)
+# ===================================================
+# pytest==8.3.4                 # Testing framework
+# pytest-asyncio==0.24.0        # Async test support
+# httpx==0.28.1                 # Test client for FastAPI
+# black==24.10.0                # Code formatter
+# flake8==7.1.1                 # Linter
+# mypy==1.13.0                  # Static type checker
+
+# ===================================================
+# Production Recommendations
+# ===================================================
+# For production deployment, consider pinning all dependencies including
+# transitive dependencies. Generate a complete lock file with:
+# pip freeze > requirements-lock.txt
+
