@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
 import { Button } from '@/components/ui/button';
@@ -52,12 +52,17 @@ export function VideoNotesEditor() {
   const [hasSubtitles, setHasSubtitles] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const chunkViewerKey = useRef(0);
+  const hasLoadedInitial = useRef(false);
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // Load video from URL parameter or localStorage on mount
   useEffect(() => {
+    // Only run once on mount
+    if (hasLoadedInitial.current) return;
+    hasLoadedInitial.current = true;
+
     // Check URL parameter first
     const videoParam = searchParams.get('v');
     if (videoParam) {
@@ -66,12 +71,13 @@ export function VideoNotesEditor() {
     } else {
       // Fall back to localStorage
       const savedVideoId = localStorage.getItem('currentVideoId');
-      if (savedVideoId && !videoInfo) {
+      if (savedVideoId) {
         // Auto-load the saved video
         loadVideoById(savedVideoId);
       }
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save video to localStorage when it changes
   useEffect(() => {
@@ -290,14 +296,21 @@ export function VideoNotesEditor() {
     }
   };
 
-  const handleEditorChange = (markdown: string) => {
-    // Content is already in markdown format from TiptapMarkdownEditor
-    setNoteContent(markdown);
-    if (videoInfo) {
-      // Compare with initial loaded content to determine if there are unsaved changes
-      setHasUnsavedChanges(markdown !== initialLoadedContent);
-    }
-  };
+  const handleEditorChange = useCallback(
+    (markdown: string) => {
+      // Content is already in markdown format from TiptapMarkdownEditor
+      setNoteContent(markdown);
+      if (videoInfo) {
+        // Compare with initial loaded content to determine if there are unsaved changes
+        setHasUnsavedChanges(markdown !== initialLoadedContent);
+      }
+    },
+    [videoInfo, initialLoadedContent]
+  );
+
+  const handleInitialLoad = useCallback(() => {
+    setHasUnsavedChanges(false);
+  }, []);
 
   const checkSubtitles = async (video_id: string, expectedCount?: number) => {
     try {
@@ -845,7 +858,7 @@ export function VideoNotesEditor() {
                 onChange={handleEditorChange}
                 className='min-h-[150px]'
                 placeholder='Start writing your notes here...'
-                onInitialLoad={() => setHasUnsavedChanges(false)}
+                onInitialLoad={handleInitialLoad}
               />
             </div>
 

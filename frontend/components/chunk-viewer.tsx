@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -47,19 +47,7 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const { getAccessToken } = useAuth();
 
-  useEffect(() => {
-    if (videoId) {
-      loadChunkIndex();
-    }
-  }, [videoId]);
-
-  useEffect(() => {
-    if (selectedChunkId !== null) {
-      loadChunkDetails(selectedChunkId);
-    }
-  }, [selectedChunkId]);
-
-  const loadChunkIndex = async () => {
+  const loadChunkIndex = useCallback(async () => {
     setLoadingChunks(true);
     try {
       const token = await getAccessToken();
@@ -102,43 +90,58 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
     } finally {
       setLoadingChunks(false);
     }
-  };
+  }, [videoId, getAccessToken]);
 
-  const loadChunkDetails = async (chunkId: number) => {
-    setLoading(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        toast.error('Authentication required');
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/chunks/${videoId}/${chunkId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+  const loadChunkDetails = useCallback(
+    async (chunkId: number) => {
+      setLoading(true);
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          toast.error('Authentication required');
+          setLoading(false);
+          return;
         }
-      );
 
-      if (!response.ok) {
-        throw new Error('Failed to load chunk details');
+        const response = await fetch(
+          `${API_BASE_URL}/api/chunks/${videoId}/${chunkId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to load chunk details');
+        }
+
+        const data = await response.json();
+        setChunkDetails(data);
+        setNoteContent(data.note_content || '');
+        setInitialLoadedContent(data.note_content || '');
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        console.error('Error loading chunk details:', error);
+        toast.error('Failed to load chunk details');
+      } finally {
+        setLoading(false);
       }
+    },
+    [videoId, getAccessToken]
+  );
 
-      const data = await response.json();
-      setChunkDetails(data);
-      setNoteContent(data.note_content || '');
-      setInitialLoadedContent(data.note_content || '');
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Error loading chunk details:', error);
-      toast.error('Failed to load chunk details');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (videoId) {
+      loadChunkIndex();
     }
-  };
+  }, [videoId, loadChunkIndex]);
+
+  useEffect(() => {
+    if (selectedChunkId !== null) {
+      loadChunkDetails(selectedChunkId);
+    }
+  }, [selectedChunkId, loadChunkDetails]);
 
   const saveChunkNote = async () => {
     if (!chunkDetails) return;
@@ -179,12 +182,19 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
     }
   };
 
-  const handleEditorChange = (markdown: string) => {
-    setNoteContent(markdown);
-    if (chunkDetails) {
-      setHasUnsavedChanges(markdown !== initialLoadedContent);
-    }
-  };
+  const handleEditorChange = useCallback(
+    (markdown: string) => {
+      setNoteContent(markdown);
+      if (chunkDetails) {
+        setHasUnsavedChanges(markdown !== initialLoadedContent);
+      }
+    },
+    [chunkDetails, initialLoadedContent]
+  );
+
+  const handleInitialLoad = useCallback(() => {
+    setHasUnsavedChanges(false);
+  }, []);
 
   if (loadingChunks) {
     return (
@@ -303,7 +313,7 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
                 value={noteContent}
                 onChange={handleEditorChange}
                 placeholder='Add your notes for this chunk...'
-                onInitialLoad={() => setHasUnsavedChanges(false)}
+                onInitialLoad={handleInitialLoad}
               />
             </CardContent>
           </Card>
