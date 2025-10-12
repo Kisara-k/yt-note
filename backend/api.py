@@ -90,6 +90,18 @@ async def root():
     return {"message": "YouTube Notes API", "version": "2.0.0"}
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for deployment platforms (Railway, Render, etc.)"""
+    from datetime import datetime
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "youtube-notes-backend",
+        "version": "2.0.0"
+    }
+
+
 @app.post("/api/auth/verify-email", response_model=VerifyEmailResponse)
 async def verify_email(request: VerifyEmailRequest):
     is_verified = is_email_verified(request.email)

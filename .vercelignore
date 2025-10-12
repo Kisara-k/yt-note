@@ -1,0 +1,78 @@
+# Vercel ignore file - exclude backend and unnecessary files from deployment
+
+# Backend directory (deploy separately)
+
+backend/
+Task 1 - download video data/
+Task 2 - write video note/
+Task 3 - User Auth/
+
+# Environment files
+
+.env
+.env._
+!.env.example
+_.local
+
+# Python
+
+**pycache**/
+_.py[cod]
+_.so
+_.egg
+_.egg-info/
+dist/
+build/
+venv/
+env/
+
+# Database
+
+_.db
+_.sqlite
+\*.sqlite3
+
+# Logs
+
+_.log
+logs/
+_.log.\*
+
+# Documentation (keep only essential)
+
+IMPLEMENTATION\_\*.md
+STATUS.md
+SYSTEM_STATUS.md
+CHANGELOG.md
+
+# Test files
+
+test\__.py
+_\_test.py
+_.test.ts
+_.test.tsx
+_.spec.ts
+_.spec.tsx
+
+# IDE
+
+.vscode/
+.idea/
+_.swp
+_.swo
+\*~
+
+# OS
+
+.DS_Store
+Thumbs.db
+
+# Git
+
+.git/
+.gitignore
+
+# Dependencies that will be installed
+
+node_modules/
+frontend/node_modules/
