@@ -7,7 +7,7 @@ import json
 
 BASE_URL = "http://localhost:8000"
 VIDEO_ID = "Esu8BXLBmZ4"
-CHUNK_ID = 0
+CHUNK_ID = 1  # 1-indexed: first chunk is 1
 
 # You'll need to get a token from the frontend or use a test token
 # For now, we'll test if the endpoint exists and returns correct structure

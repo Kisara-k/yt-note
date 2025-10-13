@@ -177,11 +177,11 @@ def process_video_subtitles_only(video_id: str) -> Dict[str, Any]:
         # Step 3: Save to database in ONE BULK OPERATION (not a loop)
         print("[3/3] Saving all chunks to database (bulk operation)...", flush=True)
         
-        # Prepare chunks for bulk insert
+        # Prepare chunks for bulk insert (1-indexed)
         chunks_for_db = [
             {
                 'video_id': video_id,
-                'chunk_id': i,
+                'chunk_id': i + 1,  # 1-indexed: starts from 1
                 'chunk_text': chunk['text'],
                 'short_title': None,
                 'ai_field_1': None,
@@ -263,10 +263,10 @@ def process_ai_enrichment_only(video_id: str) -> bool:
         # Sending only AI fields in N updates is more efficient than fetching + re-uploading chunk_text
         print("[3/3] Updating database with AI fields (targeted updates)...", flush=True)
         
-        # Prepare enriched data with chunk_ids for bulk update
+        # Prepare enriched data with chunk_ids for bulk update (1-indexed)
         enriched_with_ids = [
             {
-                'chunk_id': i,
+                'chunk_id': i + 1,  # 1-indexed: starts from 1
                 'title': enriched.get('title', ''),
                 'field_1': enriched.get('field_1', ''),
                 'field_2': enriched.get('field_2', ''),

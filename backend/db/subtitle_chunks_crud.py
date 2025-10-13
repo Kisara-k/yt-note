@@ -77,7 +77,7 @@ def create_chunk(
     
     Args:
         video_id: YouTube video ID
-        chunk_id: Chunk identifier (0-indexed)
+        chunk_id: Chunk identifier (1-indexed: starts from 1)
         chunk_text: Full text content of the chunk
         short_title: AI-generated short title (optional)
         ai_field_1: AI field 1 (optional)
