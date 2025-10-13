@@ -588,12 +588,12 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
         if not book:
             raise HTTPException(status_code=500, detail="Failed to create book")
         
-        # Create chapters
+        # Create chapters (1-indexed: starting from 1)
         chapter_count = 0
         for idx, chapter_data in enumerate(request.chapters):
             chapter = create_chapter(
                 book_id=request.book_id,
-                chapter_id=idx,
+                chapter_id=idx + 1,  # 1-indexed
                 chapter_title=chapter_data.get('chapter_title', f'Chapter {idx + 1}'),
                 chapter_text=chapter_data.get('chapter_text', '')
             )

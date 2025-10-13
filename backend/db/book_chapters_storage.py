@@ -4,6 +4,7 @@ Handles storing chapter text in storage bucket
 """
 
 import os
+import uuid
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import Optional
@@ -51,20 +52,26 @@ def ensure_bucket_exists() -> bool:
         return True  # Assume it exists
 
 
-def upload_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Optional[str]:
+def upload_chapter_text(book_id: str, chapter_text: str, existing_path: Optional[str] = None) -> Optional[str]:
     """
-    Upload chapter text to storage
+    Upload chapter text to storage with a unique identifier
     
     Args:
         book_id: Book identifier
-        chapter_id: Chapter identifier
         chapter_text: Text content of the chapter
+        existing_path: If provided, use this path (for updates); otherwise generate new UUID
         
     Returns:
         Storage path or None on error
     """
     try:
-        file_path = f"{book_id}/chapter_{chapter_id}.txt"
+        if existing_path:
+            # Use existing path for updates
+            file_path = existing_path
+        else:
+            # Generate new unique identifier for new chapters
+            unique_id = str(uuid.uuid4())
+            file_path = f"{book_id}/{unique_id}.txt"
         
         print(f"[STORAGE->] Uploading to {BUCKET_NAME}/{file_path}")
         

@@ -87,14 +87,14 @@ def test_books():
     for idx, chapter_data in enumerate(chapters_data):
         chapter = create_chapter(
             book_id=test_book_id,
-            chapter_id=idx,
+            chapter_id=idx + 1,  # 1-indexed: starts from 1
             chapter_title=chapter_data["chapter_title"],
             chapter_text=chapter_data["chapter_text"]
         )
         if chapter:
-            print(f"   ✓ Chapter {idx} created: {chapter['chapter_title']}")
+            print(f"   ✓ Chapter {idx + 1} created: {chapter['chapter_title']}")
         else:
-            print(f"   ✗ Failed to create chapter {idx}")
+            print(f"   ✗ Failed to create chapter {idx + 1}")
             return False
     
     # Test 3: Get book by ID
@@ -126,9 +126,9 @@ def test_books():
         print("   ✗ Failed to get chapter index")
         return False
     
-    # Test 6: Get chapter details
+    # Test 6: Get chapter details (1-indexed)
     print("\n7. Getting chapter details...")
-    chapter_details = get_chapter_details(test_book_id, 0)
+    chapter_details = get_chapter_details(test_book_id, 1)
     if chapter_details:
         print(f"   ✓ Chapter details retrieved:")
         print(f"     Title: {chapter_details['chapter_title']}")
@@ -137,11 +137,11 @@ def test_books():
         print("   ✗ Failed to get chapter details")
         return False
     
-    # Test 7: Update chapter note
+    # Test 7: Update chapter note (1-indexed)
     print("\n8. Updating chapter note...")
     note_result = update_chapter_note(
         test_book_id,
-        0,
+        1,
         "This is my note for chapter 1. It contains important observations."
     )
     if note_result:
@@ -150,9 +150,9 @@ def test_books():
         print("   ✗ Failed to update chapter note")
         return False
     
-    # Test 8: Verify chapter note
+    # Test 8: Verify chapter note (1-indexed)
     print("\n9. Verifying chapter note...")
-    chapter_with_note = get_chapter_details(test_book_id, 0)
+    chapter_with_note = get_chapter_details(test_book_id, 1)
     if chapter_with_note and chapter_with_note.get('note_content'):
         print(f"   ✓ Chapter note verified: {chapter_with_note['note_content'][:50]}...")
     else:

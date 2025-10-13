@@ -73,11 +73,11 @@ def create_chapter(
 ) -> Optional[Dict[str, Any]]:
     """
     Create a new book chapter
-    Stores chapter text in storage, metadata in DB
+    Stores chapter text in storage with unique UUID, metadata in DB
     
     Args:
         book_id: Book identifier
-        chapter_id: Chapter identifier (0-indexed)
+        chapter_id: Chapter identifier (1-indexed: starts from 1)
         chapter_title: Title of the chapter
         chapter_text: Full text content of the chapter
         ai_field_1: AI field 1 (optional)
@@ -88,8 +88,8 @@ def create_chapter(
         Created chapter record or None on error
     """
     try:
-        # Upload chapter text to storage
-        chapter_text_path = upload_chapter_text(book_id, chapter_id, chapter_text)
+        # Upload chapter text to storage with unique UUID
+        chapter_text_path = upload_chapter_text(book_id, chapter_text)
         if not chapter_text_path:
             print(f"[DB!!] Failed to upload chapter text to storage")
             return None
@@ -341,6 +341,7 @@ def delete_all_chapters_for_book(book_id: str) -> bool:
 def update_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Optional[Dict[str, Any]]:
     """
     Update chapter text in storage and metadata in DB
+    Uses existing storage path to maintain persistence across reorders
     
     Args:
         book_id: Book identifier
@@ -370,9 +371,9 @@ def update_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Opt
             print(f"[DB!!] No storage path for chapter: {book_id}/{chapter_id}")
             return None
         
-        # Upload new text to storage (regenerate path to be safe)
-        new_storage_path = upload_chapter_text(book_id, chapter_id, chapter_text)
-        if not new_storage_path:
+        # Upload new text to storage using EXISTING path (maintains UUID)
+        updated_storage_path = upload_chapter_text(book_id, chapter_text, existing_path=storage_path)
+        if not updated_storage_path:
             print(f"[DB!!] Failed to upload chapter text to storage")
             return None
         
@@ -399,6 +400,8 @@ def update_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Opt
 def reorder_chapters(book_id: str, chapter_order: List[int]) -> bool:
     """
     Reorder chapters by updating their chapter_id values
+    Storage paths (UUIDs) remain unchanged, ensuring file persistence
+    Reindexes chapters sequentially starting from 1 (1-indexed)
     
     Args:
         book_id: Book identifier
@@ -438,17 +441,19 @@ def reorder_chapters(book_id: str, chapter_order: List[int]) -> bool:
                 .eq("chapter_id", old_id)\
                 .execute()
         
-        # Then update to final positions
-        print(f"[DB->] Updating to final chapter_id positions")
-        for new_id, old_id in enumerate(chapter_order):
-            temp_id = -(new_id + 1)
+        # Then update to final positions (1-indexed: 1, 2, 3, ...)
+        # Note: chapter_text_path (UUID-based) remains unchanged during reordering
+        print(f"[DB->] Updating to final chapter_id positions (1-indexed)")
+        for idx, old_id in enumerate(chapter_order):
+            temp_id = -(idx + 1)
+            new_id = idx + 1  # 1-indexed: start from 1
             supabase.table("book_chapters")\
                 .update({"chapter_id": new_id, "updated_at": "NOW()"})\
                 .eq("book_id", book_id)\
                 .eq("chapter_id", temp_id)\
                 .execute()
         
-        print(f"[DB<-] Reordered {len(chapter_order)} chapters for book {book_id}")
+        print(f"[DB<-] Reordered {len(chapter_order)} chapters for book {book_id} (1-indexed)")
         return True
         
     except Exception as e:

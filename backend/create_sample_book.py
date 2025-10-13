@@ -49,20 +49,20 @@ def main():
         print("   ✗ Failed to create book")
         return
     
-    # Create chapters
+    # Create chapters (1-indexed: starting from 1)
     print("\n[3] Creating chapters...")
     for i, chapter in enumerate(chapters):
         result = create_chapter(
             book_id=BOOK_ID,
-            chapter_id=i,
+            chapter_id=i + 1,  # 1-indexed
             chapter_title=chapter["chapter_title"],
             chapter_text=chapter["chapter_text"]
         )
         
         if result:
-            print(f"   ✓ Chapter {i}: {chapter['chapter_title']}")
+            print(f"   ✓ Chapter {i + 1}: {chapter['chapter_title']}")
         else:
-            print(f"   ✗ Failed to create chapter {i}")
+            print(f"   ✗ Failed to create chapter {i + 1}")
             return
     
     # Create book note

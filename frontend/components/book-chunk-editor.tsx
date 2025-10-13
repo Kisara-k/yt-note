@@ -276,11 +276,11 @@ export function BookChunkEditor({
     const newChapterId =
       chapters.length > 0
         ? Math.max(...chapters.map((ch) => ch.chapter_id)) + 1
-        : 0;
+        : 1;
 
     setEditingChapter({
       chapter_id: newChapterId,
-      chapter_title: `Chapter ${newChapterId + 1}`,
+      chapter_title: `Chapter ${newChapterId}`,
       chapter_text: '',
     });
     setSelectedChapterId(newChapterId);

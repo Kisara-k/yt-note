@@ -284,7 +284,7 @@ export function ChunkViewer({
                 key={chunk.chunk_id}
                 value={chunk.chunk_id.toString()}
               >
-                {chunk.chunk_id + 1}. {chunk.short_title || 'Untitled'}
+                {chunk.chunk_id}. {chunk.short_title || 'Untitled'}
               </SelectItem>
             ))}
           </SelectContent>
