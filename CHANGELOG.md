@@ -2,9 +2,100 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-01-13] - Books Feature Complete ✅
+
+### Added - Books Feature
+
+A complete books management system mirroring YouTube video functionality using a separate Supabase database.
+
+- **Books Database (2nd Supabase Instance)**
+
+  - Database schema: `books`, `book_chapters`, `book_notes` tables
+  - Storage bucket: `book-chapters` for chapter text files
+  - Full CRUD operations with 50+ functions
+  - Supabase Storage integration
+  - Sample book created: "A Practical Guide to Learning" with 5 chapters
+
+- **Backend Books API (Python/FastAPI)**
+
+  - `backend/db/books_crud.py` - Book metadata CRUD
+  - `backend/db/book_chapters_crud.py` - Chapter CRUD with storage
+  - `backend/db/book_chapters_storage.py` - Storage operations
+  - `backend/db/book_notes_crud.py` - Book notes CRUD
+  - 10+ authenticated API endpoints added to `api.py`
+  - Service key configuration for storage writes
+
+- **Frontend Books Interface (Next.js/React)**
+
+  - Route: `/books?b=book_id` for viewing books
+  - `components/book-notes-editor.tsx` - Main book upload/viewing UI
+  - JSON upload format for chapters (title + text)
+  - Manual metadata entry (title, author, description, tags)
+  - Reused `ChunkViewer` component with `isBook` prop
+  - TipTap markdown editors for notes
+  - Chapter-by-chapter navigation and note-taking
+
+- **Testing & Verification**
+
+  - `test_books.py` - Comprehensive CRUD tests (13 operations)
+  - `create_sample_book.py` - Sample book generator
+  - `verify_book.py` - Database verification script
+  - `sample_book.json` - Example book data format
+  - All tests passing ✅
+
+- **Documentation**
+  - `BOOKS_COMPLETE.md` - Complete implementation summary
+  - `BOOKS_SETUP.md` - Setup instructions
+  - `BOOKS_IMPLEMENTATION.md` - Technical details
+  - `BOOKS_QUICKSTART.md` - Quick start guide
+
+### Fixed - Books Feature
+
+- Storage permission issue: Changed from anon key to service key in all CRUD modules
+- TypeScript warnings in book components (unused variables, empty interfaces)
+- Frontend build errors resolved
+
+### Technical Details - Books
+
+- Chapter text stored in Supabase Storage (not DB) for efficiency
+- Path pattern: `{book_id}/chapter_{chapter_id}.txt`
+- Service role key required for storage writes (RLS enabled)
+- JWT authentication from 1st database shared across both instances
+
+---
+
 ## [Unreleased] - 2025-10-13
 
-### 🔄 Changed - Route Restructuring
+### � Added - Books Feature
+
+- **Books Database (2nd Supabase Instance)**
+
+  - New database schema for books, chapters, and notes
+  - Storage bucket for book chapter text
+  - Separate from video database for better organization
+
+- **Backend Books API**
+
+  - Book CRUD operations (`backend/db/books_crud.py`)
+  - Chapter management with storage (`backend/db/book_chapters_crud.py`)
+  - Book notes CRUD (`backend/db/book_notes_crud.py`)
+  - API endpoints for books, chapters, and notes
+
+- **Frontend Books Interface**
+
+  - New `/books` route for book management
+  - Upload books via JSON (chapters with titles and text)
+  - Reuses existing components (ChunkViewer, TiptapMarkdownEditor)
+  - Chapter-by-chapter note taking
+  - Overall book notes
+
+- **Book Management**
+  - User-defined book IDs (e.g., `the_subtle_art`)
+  - Manual metadata entry (title, author, publisher, etc.)
+  - JSON upload for chapter content
+  - URL format: `/books?b=book_id`
+
+### �🔄 Changed - Route Restructuring
 
 - **Frontend Route Organization**
   - Moved all video-related routes to `/video/` namespace:
