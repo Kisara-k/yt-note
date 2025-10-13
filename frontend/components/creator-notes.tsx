@@ -88,10 +88,10 @@ export function CreatorNotes() {
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Creator Notes</h1>
           <div className='flex gap-2'>
-            <Link href='/filter'>
+            <Link href='/video/filter'>
               <Button variant='outline'>Filter Videos</Button>
             </Link>
-            <Link href='/'>
+            <Link href='/video'>
               <Button variant='outline'>Back to Notes</Button>
             </Link>
           </div>
@@ -146,8 +146,8 @@ export function CreatorNotes() {
         ) : hasSearched && notes.length === 0 ? (
           <Card>
             <CardContent className='p-12 text-center text-muted-foreground'>
-              No notes found for this creator. Make sure you've created notes
-              for their videos.
+              No notes found for this creator. Make sure you&apos;ve created
+              notes for their videos.
             </CardContent>
           </Card>
         ) : (
@@ -168,7 +168,7 @@ export function CreatorNotes() {
                         </span>
                       </div>
                     </div>
-                    <Link href={`/?video=${note.video_id}`}>
+                    <Link href={`/video?v=${note.video_id}`}>
                       <Button size='sm' variant='outline'>
                         View Video
                       </Button>

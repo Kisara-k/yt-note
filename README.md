@@ -228,6 +228,15 @@ The `youtube_videos` table stores:
 - shadcn/ui components
 - Protected routes with auth checks
 
+#### Application Routes
+
+- `/` - Login page (root)
+- `/video` - Main video notes editor
+- `/video/filter` - Filter and browse all videos
+- `/video/creator-notes` - View notes by creator/channel
+
+**Note**: All video routes are under `/video/` to allow for future expansion (e.g., `/book/` for book notes).
+
 ## 📚 Usage Examples
 
 ### Fetch Videos from URLs

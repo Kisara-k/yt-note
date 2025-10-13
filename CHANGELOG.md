@@ -2,6 +2,20 @@
 
 All notable changes to the YouTube Notes application.
 
+## [Unreleased] - 2025-10-13
+
+### 🔄 Changed - Route Restructuring
+
+- **Frontend Route Organization**
+  - Moved all video-related routes to `/video/` namespace:
+    - `/` now shows only the login page
+    - `/video` - Main video notes editor (formerly `/`)
+    - `/video/filter` - Video filter page (formerly `/filter`)
+    - `/video/creator-notes` - Creator notes page (formerly `/creator-notes`)
+  - Updated all navigation links and router redirects
+  - Authenticated users are now redirected to `/video` from root
+  - Prepared structure for future book-related features
+
 ## [Unreleased] - 2025-10-10
 
 ### 🔐 Added - Authentication & Security
