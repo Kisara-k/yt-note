@@ -730,19 +730,28 @@ async def get_all_book_notes_endpoint(current_user: dict = Depends(get_current_u
 
 
 @app.get("/api/prompts")
-async def get_prompts(current_user: dict = Depends(get_current_user)):
-    """Get prompt configurations"""
+async def get_prompts(content_type: str = 'video', current_user: dict = Depends(get_current_user)):
+    """Get prompt configurations
+    
+    Args:
+        content_type: Either 'video' or 'book' to determine which prompt set to return
+    """
     try:
-        prompts_dict = get_all_prompts()
+        if content_type not in ['video', 'book']:
+            raise HTTPException(status_code=400, detail="content_type must be 'video' or 'book'")
+        
+        prompts_dict = get_all_prompts(content_type=content_type)
         prompts_list = [
             {
                 'field_name': key,
-                'label': get_prompt_label(key),
+                'label': get_prompt_label(key, content_type=content_type),
                 'template': prompts_dict[key]
             }
             for key in prompts_dict
         ]
-        return {"prompts": prompts_list, "count": len(prompts_list)}
+        return {"prompts": prompts_list, "count": len(prompts_list), "content_type": content_type}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

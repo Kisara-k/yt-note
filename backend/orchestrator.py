@@ -103,10 +103,10 @@ def process_video_subtitles(video_id: str) -> Optional[List[Dict[str, Any]]]:
 
 def process_chunk_enrichment(chunk_text: str) -> Dict[str, str]:
     """
-    Enrich a single chunk with AI
+    Enrich a single chunk with AI (for videos)
     Returns: dict with title, field_1, field_2, field_3
     """
-    prompts = get_all_prompts()
+    prompts = get_all_prompts(content_type='video')
     
     result = enrich_chunk(
         text=chunk_text,
@@ -120,12 +120,17 @@ def process_chunk_enrichment(chunk_text: str) -> Dict[str, str]:
     return result
 
 
-def process_chunks_enrichment_parallel(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def process_chunks_enrichment_parallel(chunks: List[Dict[str, Any]], content_type: str = 'video') -> List[Dict[str, Any]]:
     """
     Enrich multiple chunks in parallel
+    
+    Args:
+        chunks: List of chunks to enrich
+        content_type: Either 'video' or 'book' to determine which prompts to use
+    
     Returns: list of enriched chunks
     """
-    prompts = get_all_prompts()
+    prompts = get_all_prompts(content_type=content_type)
     
     enriched = enrich_chunks_parallel(
         chunks=chunks,

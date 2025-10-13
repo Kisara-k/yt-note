@@ -4,6 +4,30 @@ All notable changes to the YouTube Notes application.
 
 ## [2025-01-13] - Books Feature Complete ✅
 
+### Added - Separate Book Prompts for AI Enrichment
+
+Books now use specialized prompts distinct from video prompts for AI enrichment of chapter sections.
+
+- **Book-Specific Prompts**
+
+  - `BOOK_PROMPTS` in `prompts.py` with book-focused language
+  - Field 1: "Chapter Summary" (vs "High-Level Summary" for videos)
+  - Field 2: "Important Concepts" (vs "Key Points" for videos)
+  - Field 3: "Key Insights" (vs "Topics/Themes" for videos)
+  - All prompts reference "book chapter section" instead of "video segment"
+
+- **Backend Updates**
+
+  - `get_all_prompts(content_type)` now accepts 'video' or 'book' parameter
+  - `get_prompt_label(field_name, content_type)` returns appropriate labels
+  - `process_chunks_enrichment_parallel()` accepts `content_type` parameter
+  - `/api/prompts?content_type=book` endpoint returns book-specific prompts
+  - Backward compatible - defaults to 'video' prompts
+
+- **Testing**
+  - `test_book_prompts.py` verifies all 4 prompts differ between video/book
+  - All prompts validated as unique ✅
+
 ### Added - Books Feature
 
 A complete books management system mirroring YouTube video functionality using a separate Supabase database.

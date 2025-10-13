@@ -6,8 +6,8 @@ All prompt templates and related functions
 from config import OPENAI_MAX_TOKENS_TITLE, OPENAI_MAX_TOKENS_OTHER
 
 
-# AI Prompts for chunk enrichment
-PROMPTS = {
+# AI Prompts for video chunk enrichment
+VIDEO_PROMPTS = {
     'short_title': {
         'label': 'Short Title',
         'max_tokens': OPENAI_MAX_TOKENS_TITLE,
@@ -54,32 +54,115 @@ Provide a comma-separated list of 3-5 topics or themes.'''
 }
 
 
-def get_prompt(field_name: str, chunk_text: str) -> str:
-    """Get formatted prompt for a specific field"""
-    if field_name not in PROMPTS:
+# AI Prompts for book chapter enrichment
+BOOK_PROMPTS = {
+    'short_title': {
+        'label': 'Short Title',
+        'max_tokens': OPENAI_MAX_TOKENS_TITLE,
+        'template': '''Create a concise title (max 10 words) that captures the main topic of this book chapter section.
+
+Chapter section:
+{chunk_text}
+
+Generate only the title, no additional text.'''
+    },
+    
+    'ai_field_1': {
+        'label': 'Chapter Summary',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': '''Provide a comprehensive summary (2-3 sentences) of this book chapter section.
+
+Chapter section:
+{chunk_text}
+
+Focus on the main concepts, arguments, or narrative developments presented.'''
+    },
+    
+    'ai_field_2': {
+        'label': 'Important Concepts',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': '''Identify and explain the important concepts, definitions, or ideas in this book chapter section.
+
+Chapter section:
+{chunk_text}
+
+List 3-5 key concepts as bullet points, with brief explanations where relevant.'''
+    },
+    
+    'ai_field_3': {
+        'label': 'Key Insights',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': '''Extract the key insights, lessons, or takeaways from this book chapter section.
+
+Chapter section:
+{chunk_text}
+
+Provide 3-5 actionable insights or important lessons that a reader should remember.'''
+    }
+}
+
+
+# Legacy reference - defaults to video prompts for backward compatibility
+PROMPTS = VIDEO_PROMPTS
+
+
+def get_prompt(field_name: str, chunk_text: str, content_type: str = 'video') -> str:
+    """Get formatted prompt for a specific field
+    
+    Args:
+        field_name: Name of the field (short_title, ai_field_1, ai_field_2, ai_field_3)
+        chunk_text: The text content to process
+        content_type: Either 'video' or 'book' to determine which prompt set to use
+    """
+    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    
+    if field_name not in prompts:
         raise ValueError(f"Unknown field name: {field_name}")
-    return PROMPTS[field_name]['template'].format(chunk_text=chunk_text)
+    return prompts[field_name]['template'].format(chunk_text=chunk_text)
 
 
-def get_all_prompts() -> dict:
-    """Get all prompt templates as a flat dict"""
+def get_all_prompts(content_type: str = 'video') -> dict:
+    """Get all prompt templates as a flat dict
+    
+    Args:
+        content_type: Either 'video' or 'book' to determine which prompt set to use
+    
+    Returns:
+        Dict with keys: title, field_1, field_2, field_3
+    """
+    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    
     return {
-        'title': PROMPTS['short_title']['template'],
-        'field_1': PROMPTS['ai_field_1']['template'],
-        'field_2': PROMPTS['ai_field_2']['template'],
-        'field_3': PROMPTS['ai_field_3']['template']
+        'title': prompts['short_title']['template'],
+        'field_1': prompts['ai_field_1']['template'],
+        'field_2': prompts['ai_field_2']['template'],
+        'field_3': prompts['ai_field_3']['template']
     }
 
 
-def get_prompt_label(field_name: str) -> str:
-    """Get the label for a specific prompt field"""
-    if field_name not in PROMPTS:
+def get_prompt_label(field_name: str, content_type: str = 'video') -> str:
+    """Get the label for a specific prompt field
+    
+    Args:
+        field_name: Name of the field
+        content_type: Either 'video' or 'book' to determine which prompt set to use
+    """
+    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    
+    if field_name not in prompts:
         return field_name
-    return PROMPTS[field_name]['label']
+    return prompts[field_name]['label']
 
 
-def get_max_tokens(field_name: str) -> int:
-    """Get max tokens for a specific prompt field"""
-    if field_name not in PROMPTS:
+def get_max_tokens(field_name: str, content_type: str = 'video') -> int:
+    """Get max tokens for a specific prompt field
+    
+    Args:
+        field_name: Name of the field
+        content_type: Either 'video' or 'book' to determine which prompt set to use
+    """
+    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    
+    if field_name not in prompts:
         return OPENAI_MAX_TOKENS_OTHER
-    return PROMPTS[field_name]['max_tokens']
+    return prompts[field_name]['max_tokens']
