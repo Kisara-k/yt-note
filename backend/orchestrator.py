@@ -12,7 +12,9 @@ load_dotenv()
 
 # Import from config
 from config import (
+    USE_DURATION_CHUNKING,
     CHUNK_TARGET_WORDS, CHUNK_MAX_WORDS, CHUNK_OVERLAP_WORDS, CHUNK_MIN_FINAL_WORDS,
+    CHUNK_TARGET_DURATION, CHUNK_MAX_DURATION, CHUNK_OVERLAP_DURATION, CHUNK_MIN_FINAL_DURATION,
     OPENAI_MODEL, OPENAI_TEMPERATURE, OPENAI_MAX_TOKENS_TITLE, OPENAI_MAX_TOKENS_OTHER
 )
 from prompts import get_all_prompts
@@ -95,7 +97,12 @@ def process_video_subtitles(video_id: str) -> Optional[List[Dict[str, Any]]]:
         target_words=CHUNK_TARGET_WORDS,
         max_words=CHUNK_MAX_WORDS,
         overlap_words=CHUNK_OVERLAP_WORDS,
-        min_final_words=CHUNK_MIN_FINAL_WORDS
+        min_final_words=CHUNK_MIN_FINAL_WORDS,
+        use_duration_chunking=USE_DURATION_CHUNKING,
+        target_duration=CHUNK_TARGET_DURATION,
+        max_duration=CHUNK_MAX_DURATION,
+        overlap_duration=CHUNK_OVERLAP_DURATION,
+        min_final_duration=CHUNK_MIN_FINAL_DURATION
     )
     
     return chunks
