@@ -336,3 +336,121 @@ def delete_all_chapters_for_book(book_id: str) -> bool:
     except Exception as e:
         print(f"[DB!!] {str(e)}")
         return False
+
+
+def update_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Optional[Dict[str, Any]]:
+    """
+    Update chapter text in storage and metadata in DB
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Chapter identifier
+        chapter_text: New chapter text content
+        
+    Returns:
+        Updated chapter dict or None on error
+    """
+    try:
+        # Get existing chapter to find storage path
+        print(f"[DB->] SELECT book_chapters WHERE book_id={book_id} AND chapter_id={chapter_id}")
+        response = supabase.table("book_chapters")\
+            .select("*")\
+            .eq("book_id", book_id)\
+            .eq("chapter_id", chapter_id)\
+            .execute()
+        
+        if not response.data or len(response.data) == 0:
+            print(f"[DB!!] Chapter not found: {book_id}/{chapter_id}")
+            return None
+        
+        chapter = response.data[0]
+        storage_path = chapter.get('chapter_text_path')
+        
+        if not storage_path:
+            print(f"[DB!!] No storage path for chapter: {book_id}/{chapter_id}")
+            return None
+        
+        # Upload new text to storage (regenerate path to be safe)
+        new_storage_path = upload_chapter_text(book_id, chapter_id, chapter_text)
+        if not new_storage_path:
+            print(f"[DB!!] Failed to upload chapter text to storage")
+            return None
+        
+        # Update timestamp in DB
+        print(f"[DB->] UPDATE book_chapters SET updated_at=NOW() WHERE book_id={book_id} AND chapter_id={chapter_id}")
+        response = supabase.table("book_chapters")\
+            .update({"updated_at": "NOW()"})\
+            .eq("book_id", book_id)\
+            .eq("chapter_id", chapter_id)\
+            .execute()
+        
+        print(f"[DB<-] Updated chapter text for {book_id}/{chapter_id}")
+        
+        # Return updated chapter with new text
+        updated_chapter = response.data[0] if response.data else chapter
+        updated_chapter['chapter_text'] = chapter_text
+        return updated_chapter
+        
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
+def reorder_chapters(book_id: str, chapter_order: List[int]) -> bool:
+    """
+    Reorder chapters by updating their chapter_id values
+    
+    Args:
+        book_id: Book identifier
+        chapter_order: List of current chapter_ids in desired new order
+        
+    Returns:
+        True if successful, False on error
+    """
+    try:
+        # Get all chapters for this book
+        print(f"[DB->] SELECT book_chapters WHERE book_id={book_id}")
+        response = supabase.table("book_chapters")\
+            .select("*")\
+            .eq("book_id", book_id)\
+            .order("chapter_id")\
+            .execute()
+        
+        if not response.data:
+            print(f"[DB!!] No chapters found for book: {book_id}")
+            return False
+        
+        chapters = {ch['chapter_id']: ch for ch in response.data}
+        
+        # Verify all chapter_ids in order exist
+        for old_id in chapter_order:
+            if old_id not in chapters:
+                print(f"[DB!!] Invalid chapter_id in order: {old_id}")
+                return False
+        
+        # First, set all chapter_ids to negative temporary values to avoid conflicts
+        print(f"[DB->] Setting temporary negative chapter_ids")
+        for idx, old_id in enumerate(chapter_order):
+            temp_id = -(idx + 1)
+            supabase.table("book_chapters")\
+                .update({"chapter_id": temp_id})\
+                .eq("book_id", book_id)\
+                .eq("chapter_id", old_id)\
+                .execute()
+        
+        # Then update to final positions
+        print(f"[DB->] Updating to final chapter_id positions")
+        for new_id, old_id in enumerate(chapter_order):
+            temp_id = -(new_id + 1)
+            supabase.table("book_chapters")\
+                .update({"chapter_id": new_id, "updated_at": "NOW()"})\
+                .eq("book_id", book_id)\
+                .eq("chapter_id", temp_id)\
+                .execute()
+        
+        print(f"[DB<-] Reordered {len(chapter_order)} chapters for book {book_id}")
+        return True
+        
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return False

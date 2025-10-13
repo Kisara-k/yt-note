@@ -52,7 +52,10 @@ from db.book_chapters_crud import (
     get_chapters_by_book,
     get_chapter_index,
     get_chapter_details,
-    update_chapter_note
+    update_chapter_note,
+    update_chapter_text,
+    delete_chapter,
+    reorder_chapters
 )
 from db.book_notes_crud import (
     create_or_update_note as create_or_update_book_note,
@@ -725,6 +728,72 @@ async def get_all_book_notes_endpoint(current_user: dict = Depends(get_current_u
     try:
         notes = get_notes_with_book_info()
         return {"notes": notes, "count": len(notes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/book/{book_id}/chapter/{chapter_id}/text")
+async def update_chapter_text_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update chapter text content"""
+    try:
+        chapter_text = request.get("chapter_text")
+        if chapter_text is None:
+            raise HTTPException(status_code=400, detail="chapter_text is required")
+        
+        updated_chapter = update_chapter_text(book_id, chapter_id, chapter_text)
+        if not updated_chapter:
+            raise HTTPException(status_code=500, detail="Failed to update chapter text")
+        
+        return updated_chapter
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/book/{book_id}/chapter/{chapter_id}")
+async def delete_chapter_endpoint(
+    book_id: str,
+    chapter_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a chapter"""
+    try:
+        success = delete_chapter(book_id, chapter_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete chapter")
+        
+        return {"success": True, "message": f"Chapter {chapter_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/{book_id}/chapters/reorder")
+async def reorder_chapters_endpoint(
+    book_id: str,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reorder chapters for a book"""
+    try:
+        chapter_order = request.get("chapter_order")
+        if not chapter_order or not isinstance(chapter_order, list):
+            raise HTTPException(status_code=400, detail="chapter_order array is required")
+        
+        success = reorder_chapters(book_id, chapter_order)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to reorder chapters")
+        
+        return {"success": True, "message": "Chapters reordered successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

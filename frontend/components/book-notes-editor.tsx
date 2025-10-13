@@ -15,6 +15,7 @@ import {
   Filter,
   User,
   Plus,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -238,6 +239,16 @@ export function BookNotesEditor() {
                 <Plus className='mr-2 h-4 w-4' />
                 Add Book
               </Button>
+              {bookInfo && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => router.push(`/book/chunks?b=${bookInfo.id}`)}
+                >
+                  <Edit3 className='mr-2 h-4 w-4' />
+                  Edit Chunks
+                </Button>
+              )}
             </div>
 
             <div className='flex items-center gap-4'>

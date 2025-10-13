@@ -4,6 +4,44 @@ All notable changes to the YouTube Notes application.
 
 ## [2025-01-13] - Books Feature Complete ✅
 
+### Added - Book Chunk Editor
+
+A comprehensive chunk/chapter editor interface for managing book chapters.
+
+- **Backend API Endpoints**
+
+  - `PUT /api/book/{book_id}/chapter/{chapter_id}/text` - Update chapter text
+  - `DELETE /api/book/{book_id}/chapter/{chapter_id}` - Delete a chapter
+  - `POST /api/book/{book_id}/chapters/reorder` - Reorder chapters
+
+- **Backend CRUD Functions**
+
+  - `update_chapter_text()` - Update chapter text in storage and DB
+  - `reorder_chapters()` - Reorder chapters with transactional safety
+  - Uses temporary negative IDs to avoid conflicts during reorder
+
+- **Frontend Interface (`/book/chunks?b=book_id`)**
+
+  - Split-view: Chapters list on left, editor on right
+  - **Chapter Management:**
+    - Add new chapters
+    - Edit chapter title and text
+    - Delete chapters with confirmation
+    - Reorder chapters with up/down arrows
+  - **Real-time Operations:**
+    - Load chapter text on-demand from storage
+    - Save changes with instant feedback
+    - Optimistic UI updates for reordering
+  - **Navigation:**
+    - "Edit Chunks" button appears in book-notes-editor after loading a book
+    - Easy access back to main book interface
+
+- **Component: `book-chunk-editor.tsx`**
+  - Full CRUD operations for chapters
+  - Textarea editor for chapter text (500+ line capacity)
+  - Loading states and error handling
+  - Toast notifications for all operations
+
 ### Added - Separate Book Prompts for AI Enrichment
 
 Books now use specialized prompts distinct from video prompts for AI enrichment of chapter sections.
