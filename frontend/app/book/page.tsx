@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export default function BooksPage() {
+export default function BookPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 

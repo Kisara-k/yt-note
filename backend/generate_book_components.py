@@ -1,4 +1,10 @@
-'use client';
+"""
+Generate frontend book components
+"""
+import os
+
+# Book Notes Editor Component
+BOOK_NOTES_EDITOR = """'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
@@ -211,48 +217,40 @@ export function BookNotesEditor() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='container mx-auto p-6 max-w-7xl'>
-        <div className='mb-8'>
-          <div className='flex justify-between items-center mb-4'>
+      <div className='bg-card border-b sticky top-0 z-10'>
+        <div className='container mx-auto px-6 py-4'>
+          <div className='flex items-center justify-between'>
             <div className='flex items-center gap-4'>
-              <p className='text-muted-foreground'>
-                Enter a book ID to create notes
-              </p>
+              <BookOpen className='h-6 w-6' />
+              <span className='text-lg font-semibold'>Book Notes</span>
             </div>
-
-            {/* Navigation Buttons - Centered */}
             <div className='flex items-center gap-2'>
               <Button
-                variant='outline'
-                size='sm'
-                onClick={() => router.push('/book/filter')}
-              >
-                <Filter className='mr-2 h-4 w-4' />
-                All Books
-              </Button>
-              <Button
-                variant='outline'
+                variant='ghost'
                 size='sm'
                 onClick={() => router.push('/book/add')}
               >
-                <Plus className='mr-2 h-4 w-4' />
+                <Plus className='h-4 w-4 mr-2' />
                 Add Book
               </Button>
-            </div>
-
-            <div className='flex items-center gap-4'>
-              <div className='text-sm text-muted-foreground'>
-                Signed in as <strong>{user?.email}</strong>
-              </div>
-              <Button variant='outline' size='sm' onClick={handleSignOut}>
-                <LogOut className='mr-2 h-4 w-4' />
-                Sign Out
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => router.push('/book/filter')}
+              >
+                <Filter className='h-4 w-4 mr-2' />
+                Filter
+              </Button>
+              <Button variant='ghost' size='sm' onClick={handleSignOut}>
+                <User className='h-4 w-4 mr-2' />
+                <LogOut className='h-4 w-4' />
               </Button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Book ID Input */}
+      <div className='container mx-auto px-6 py-8 max-w-5xl'>
         <div className='mb-8 space-y-4'>
           <div className='flex gap-3'>
             <div className='flex-1'>
@@ -399,3 +397,11 @@ export function BookNotesEditor() {
     </div>
   );
 }
+"""
+
+# Write the file
+output_path = "../frontend/components/book-notes-editor.tsx"
+with open(output_path, 'w', encoding='utf-8') as f:
+    f.write(BOOK_NOTES_EDITOR)
+
+print(f"✓ Created {output_path}")

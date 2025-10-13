@@ -15,10 +15,11 @@ A full-stack application for creating and managing markdown notes for **YouTube 
 ### Books (NEW!)
 
 - ✅ **Book Management**: Upload books via JSON with chapter structure
-- ✅ **Chapter Storage**: Secure storage in separate database
+- ✅ **Chapter Storage**: Secure storage in separate database with Supabase Storage
 - ✅ **Chapter Notes**: Take notes on individual chapters
-- ✅ **Reusable Components**: Leverages existing video components
-- ✅ **Custom Book IDs**: User-defined identifiers (e.g., `the_subtle_art`)
+- ✅ **Book Routes**: `/book` for viewing, `/book/add` for uploading, `/book/filter` for browsing
+- ✅ **Filter & Search**: Browse all books with filtering by title, author, tags
+- ✅ **Custom Book IDs**: User-defined identifiers (e.g., `practical_guide_123`)
 
 **For complete implementation details**: See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) and [BOOKS_SETUP.md](BOOKS_SETUP.md)
 
@@ -38,8 +39,9 @@ A full-stack application for creating and managing markdown notes for **YouTube 
 **Web Application** 🎉
 
 - ✅ Secure login/signup with Supabase Auth
-- ✅ **Videos**: Enter YouTube video URL, process with AI, take notes
-- ✅ **Books**: Upload books via JSON, take chapter notes
+- ✅ **Videos**: Enter YouTube video URL, process with AI, take notes (`/video`)
+- ✅ **Books**: Upload books via JSON, take chapter notes (`/book`, `/book/add`, `/book/filter`)
+- ✅ **Filter Pages**: Browse and filter videos (`/video/filter`) or books (`/book/filter`)
 - ✅ Create markdown notes with TipTap editor
 - ✅ Auto-save notes to database
 - ✅ Load existing notes automatically

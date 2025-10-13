@@ -55,6 +55,18 @@ A complete books management system mirroring YouTube video functionality using a
 - TypeScript warnings in book components (unused variables, empty interfaces)
 - Frontend build errors resolved
 
+### Changed - Books Frontend Structure
+
+- Restructured books routes to mirror video routes exactly:
+  - Changed from `/books?b=id` to `/book?b=id` (singular, like `/video?v=id`)
+  - Added `/book/add` route for uploading new books (separated from viewing)
+  - Added `/book/filter` route for browsing and filtering all books
+- Created three focused components:
+  - `book-notes-editor.tsx` - View and take notes on books (like video-notes-editor)
+  - `book-add.tsx` - Upload new books with JSON chapters
+  - `book-filter.tsx` - Browse, search, filter, and sort books
+- All book routes now have same navigation patterns as video routes
+
 ### Technical Details - Books
 
 - Chapter text stored in Supabase Storage (not DB) for efficiency
