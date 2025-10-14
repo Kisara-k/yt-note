@@ -98,7 +98,8 @@ export function VideoFilter() {
     }
   };
 
-  const parseDuration = (duration: string): number => {
+  const parseDuration = (duration: string | null | undefined): number => {
+    if (!duration) return 0;
     const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!match) return 0;
     const hours = parseInt(match[1] || '0');
