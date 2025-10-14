@@ -23,7 +23,10 @@ from orchestrator import (
     process_full_video,
     process_multiple_videos_parallel,
     process_video_subtitles_only,
-    process_ai_enrichment_only
+    process_ai_enrichment_only,
+    process_book_chapter_ai_enrichment,
+    process_book_all_chapters_ai_enrichment,
+    process_video_chunk_ai_enrichment
 )
 
 # Import from auth and db directly
@@ -119,6 +122,20 @@ class ChapterNoteRequest(BaseModel):
     book_id: str
     chapter_id: int
     note_content: str
+
+
+class BookChapterAIRequest(BaseModel):
+    book_id: str
+    chapter_id: int
+
+
+class BookAIRequest(BaseModel):
+    book_id: str
+
+
+class VideoChunkAIRequest(BaseModel):
+    video_id: str
+    chunk_id: int
 
 
 class VerifyEmailRequest(BaseModel):
@@ -510,6 +527,49 @@ async def process_ai_enrichment_endpoint(request: VideoRequest, current_user: di
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/jobs/process-video-chunk-ai")
+async def process_video_chunk_ai_endpoint(
+    request: VideoChunkAIRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process AI enrichment for a single video chunk (background)"""
+    try:
+        # Verify chunk exists
+        from db.subtitle_chunks_crud import get_chunk_details
+        chunk = get_chunk_details(request.video_id, request.chunk_id)
+        if not chunk:
+            raise HTTPException(status_code=404, detail="Chunk not found")
+        
+        # Process in background
+        def background_task():
+            import sys
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass
+            try:
+                process_video_chunk_ai_enrichment(request.video_id, request.chunk_id)
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": "Chunk AI enrichment started",
+            "video_id": request.video_id,
+            "chunk_id": request.chunk_id,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/test/process-video-no-auth")
 async def process_video_no_auth(request: VideoRequest):
     """TEST: Process video without auth"""
@@ -806,6 +866,98 @@ async def reorder_chapters_endpoint(
             raise HTTPException(status_code=500, detail="Failed to reorder chapters")
         
         return {"success": True, "message": "Chapters reordered successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/process-book-chapter-ai")
+async def process_book_chapter_ai_endpoint(
+    request: BookChapterAIRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process AI enrichment for a single book chapter (background)"""
+    try:
+        # Verify book and chapter exist
+        from db.book_chapters_crud import get_chapter_details
+        chapter = get_chapter_details(request.book_id, request.chapter_id)
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        
+        # Process in background
+        def background_task():
+            import sys
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass
+            try:
+                process_book_chapter_ai_enrichment(request.book_id, request.chapter_id)
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": "Chapter AI enrichment started",
+            "book_id": request.book_id,
+            "chapter_id": request.chapter_id,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/process-book-all-chapters-ai")
+async def process_book_all_chapters_ai_endpoint(
+    request: BookAIRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process AI enrichment for all chapters of a book (background)"""
+    try:
+        # Verify book exists
+        from db.books_crud import get_book_by_id
+        book = get_book_by_id(request.book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        
+        # Check if book has chapters
+        from db.book_chapters_crud import get_chapters_by_book
+        chapters = get_chapters_by_book(request.book_id)
+        if not chapters:
+            raise HTTPException(status_code=400, detail="No chapters found for this book")
+        
+        # Process in background
+        def background_task():
+            import sys
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass
+            try:
+                process_book_all_chapters_ai_enrichment(request.book_id)
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": f"AI enrichment started for {len(chapters)} chapters",
+            "book_id": request.book_id,
+            "chapter_count": len(chapters),
+            "status": "processing"
+        }
+        
     except HTTPException:
         raise
     except Exception as e:

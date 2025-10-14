@@ -26,6 +26,8 @@ from openai_api.enrichment import enrich_chunk, enrich_chunks_parallel
 from db.youtube_crud import create_or_update_video, get_video_by_id, bulk_create_or_update_videos
 from db.subtitle_chunks_crud import create_chunk, get_chunks_by_video, delete_chunks_by_video, update_chunk_ai_fields, bulk_create_chunks, bulk_update_ai_fields
 from db.video_notes_crud import create_or_update_note, get_note_by_video_id
+from db.book_chapters_crud import get_chapters_by_book, load_chapters_text, update_chapter_ai_fields
+from db.books_crud import get_book_by_id
 
 
 def process_video_metadata(video_url: str) -> Optional[Dict[str, Any]]:
@@ -350,3 +352,262 @@ def process_multiple_videos_parallel(video_ids: List[str], max_workers: int = 3)
                 results[video_id] = False
     
     return results
+
+
+# ==================== BOOK PROCESSING FUNCTIONS ====================
+
+def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int) -> bool:
+    """
+    Enrich a single book chapter with AI-generated fields
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Chapter identifier
+        
+    Returns:
+        True if successful
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"AI Enrichment for book chapter: {book_id} / Chapter {chapter_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Get chapter from database
+        print("[1/3] Loading chapter from database...", flush=True)
+        from db.book_chapters_crud import get_chapter_details
+        chapter = get_chapter_details(book_id, chapter_id)
+        
+        if not chapter:
+            print(f"Chapter not found: {book_id} / {chapter_id}", flush=True)
+            return False
+        
+        if not chapter.get('chapter_text'):
+            print(f"No chapter text found", flush=True)
+            return False
+            
+        print(f"Found chapter: {chapter.get('chapter_title', 'Untitled')}\n", flush=True)
+        
+        # Step 2: Enrich with AI
+        print("[2/3] Enriching chapter with AI...", flush=True)
+        
+        # Get book prompts
+        from prompts import get_all_prompts
+        prompts = get_all_prompts(content_type='book')
+        
+        # Enrich the chapter
+        ai_fields = enrich_chunk(
+            text=chapter['chapter_text'],
+            prompts=prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER
+        )
+        
+        print(f"AI enrichment complete\n", flush=True)
+        
+        # Step 3: Update database
+        print("[3/3] Saving AI fields to database...", flush=True)
+        
+        updated = update_chapter_ai_fields(
+            book_id=book_id,
+            chapter_id=chapter_id,
+            ai_field_1=ai_fields.get('field_1'),
+            ai_field_2=ai_fields.get('field_2'),
+            ai_field_3=ai_fields.get('field_3')
+        )
+        
+        if updated:
+            print(f"Successfully enriched chapter {chapter_id}", flush=True)
+            print(f"\n{'='*70}", flush=True)
+            print("Chapter AI enrichment complete!", flush=True)
+            print(f"{'='*70}\n", flush=True)
+            return True
+        else:
+            print(f"Failed to update chapter in database", flush=True)
+            return False
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
+    """
+    Enrich all chapters of a book with AI-generated fields (parallel processing)
+    
+    Args:
+        book_id: Book identifier
+        
+    Returns:
+        True if all chapters processed successfully
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"AI Enrichment for all chapters of book: {book_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Get all chapters from database
+        print("[1/3] Loading chapters from database...", flush=True)
+        chapters = get_chapters_by_book(book_id)
+        
+        if not chapters:
+            print("No chapters found for this book.", flush=True)
+            return False
+        
+        print(f"Found {len(chapters)} chapters\n", flush=True)
+        
+        # Step 2: Load chapter text from storage
+        print("[2/3] Loading chapter text from storage...", flush=True)
+        chapters = load_chapters_text(chapters)
+        print(f"Loaded text for {len(chapters)} chapters\n", flush=True)
+        
+        # Step 3: Enrich all chapters with AI (parallel)
+        print("[3/3] Enriching chapters with AI (parallel)...", flush=True)
+        
+        # Get book prompts
+        from prompts import get_all_prompts
+        prompts = get_all_prompts(content_type='book')
+        
+        # Prepare chapters for enrichment
+        chapters_for_enrichment = []
+        for chapter in chapters:
+            if chapter.get('chapter_text'):
+                chapters_for_enrichment.append({
+                    'text': chapter['chapter_text'],
+                    'chapter_id': chapter['chapter_id'],
+                    'book_id': chapter['book_id']
+                })
+        
+        if not chapters_for_enrichment:
+            print("No chapters with text to enrich", flush=True)
+            return False
+        
+        # Enrich chapters in parallel
+        enriched_chapters = enrich_chunks_parallel(
+            chunks=chapters_for_enrichment,
+            prompts=prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER,
+            max_workers=3
+        )
+        
+        print(f"\nAI enrichment complete for {len(enriched_chapters)} chapters", flush=True)
+        
+        # Step 4: Update all chapters in database
+        print("\n[4/4] Saving AI fields to database...", flush=True)
+        
+        success_count = 0
+        for enriched in enriched_chapters:
+            updated = update_chapter_ai_fields(
+                book_id=enriched['book_id'],
+                chapter_id=enriched['chapter_id'],
+                ai_field_1=enriched.get('field_1'),
+                ai_field_2=enriched.get('field_2'),
+                ai_field_3=enriched.get('field_3')
+            )
+            if updated:
+                success_count += 1
+        
+        print(f"Successfully updated {success_count}/{len(enriched_chapters)} chapters", flush=True)
+        print(f"\n{'='*70}", flush=True)
+        print("Book AI enrichment complete!", flush=True)
+        print(f"{'='*70}\n", flush=True)
+        
+        return success_count == len(enriched_chapters)
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
+    """
+    Enrich a single video chunk with AI-generated fields
+    
+    Args:
+        video_id: Video identifier
+        chunk_id: Chunk identifier
+        
+    Returns:
+        True if successful
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"AI Enrichment for video chunk: {video_id} / Chunk {chunk_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Get chunk from database
+        print("[1/3] Loading chunk from database...", flush=True)
+        from db.subtitle_chunks_crud import get_chunk_details
+        chunk = get_chunk_details(video_id, chunk_id)
+        
+        if not chunk:
+            print(f"Chunk not found: {video_id} / {chunk_id}", flush=True)
+            return False
+        
+        if not chunk.get('chunk_text'):
+            print(f"No chunk text found", flush=True)
+            return False
+            
+        print(f"Found chunk {chunk_id}\n", flush=True)
+        
+        # Step 2: Enrich with AI
+        print("[2/3] Enriching chunk with AI...", flush=True)
+        
+        # Get video prompts
+        from prompts import get_all_prompts
+        prompts = get_all_prompts(content_type='video')
+        
+        # Enrich the chunk
+        ai_fields = enrich_chunk(
+            text=chunk['chunk_text'],
+            prompts=prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER
+        )
+        
+        print(f"AI enrichment complete\n", flush=True)
+        
+        # Step 3: Update database
+        print("[3/3] Saving AI fields to database...", flush=True)
+        
+        updated = update_chunk_ai_fields(
+            video_id=video_id,
+            chunk_id=chunk_id,
+            short_title=ai_fields.get('title'),
+            ai_field_1=ai_fields.get('field_1'),
+            ai_field_2=ai_fields.get('field_2'),
+            ai_field_3=ai_fields.get('field_3')
+        )
+        
+        if updated:
+            print(f"Successfully enriched chunk {chunk_id}", flush=True)
+            print(f"\n{'='*70}", flush=True)
+            print("Chunk AI enrichment complete!", flush=True)
+            print(f"{'='*70}\n", flush=True)
+            return True
+        else:
+            print(f"Failed to update chunk in database", flush=True)
+            return False
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return False
+

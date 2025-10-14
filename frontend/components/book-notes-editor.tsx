@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Save,
   BookOpen,
@@ -16,6 +17,8 @@ import {
   User,
   Plus,
   Edit3,
+  Sparkles,
+  PlayCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -47,6 +50,7 @@ export function BookNotesEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [processingAllChapters, setProcessingAllChapters] = useState(false);
   const chunkViewerKey = useRef(0);
   const hasLoadedInitial = useRef(false);
   const { user, signOut, getAccessToken } = useAuth();
@@ -210,6 +214,64 @@ export function BookNotesEditor() {
     setHasUnsavedChanges(false);
   }, []);
 
+  const handleProcessAllChapters = async () => {
+    if (!bookInfo) return;
+
+    setProcessingAllChapters(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/jobs/process-book-all-chapters-ai',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ book_id: bookInfo.id }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to start AI enrichment');
+      }
+
+      const result = await response.json();
+      console.log('AI enrichment started for all chapters:', result);
+
+      // Poll to check if AI enrichment is complete
+      let pollCount = 0;
+      const maxPolls = 60; // 3 minutes (60 * 3 seconds)
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+
+        // Refresh the chapter viewer to check for updates
+        chunkViewerKey.current += 1;
+
+        if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          setProcessingAllChapters(false);
+          console.log(
+            'AI enrichment timeout - manually refresh to see updates'
+          );
+        }
+      }, 3000);
+
+      // Stop processing state after initial call
+      setTimeout(() => {
+        setProcessingAllChapters(false);
+      }, 5000);
+    } catch (error) {
+      console.error('AI enrichment error:', error);
+      setProcessingAllChapters(false);
+    }
+  };
+
   return (
     <div className='min-h-screen bg-background'>
       <div className='container mx-auto p-6 max-w-7xl'>
@@ -302,33 +364,57 @@ export function BookNotesEditor() {
 
           {bookInfo && (
             <div className='space-y-3'>
-              <div className='bg-card border rounded-lg p-4'>
-                <div className='space-y-2'>
-                  <h2 className='text-xl font-semibold'>{bookInfo.title}</h2>
-                  <div className='flex gap-4 text-sm text-muted-foreground'>
-                    {bookInfo.author && <span>by {bookInfo.author}</span>}
-                    {bookInfo.publisher && <span>{bookInfo.publisher}</span>}
-                    {bookInfo.publication_year && (
-                      <span>{bookInfo.publication_year}</span>
+              <div className='flex gap-3'>
+                <div className='bg-card border rounded-lg p-4 flex-1'>
+                  <div className='space-y-2'>
+                    <h2 className='text-xl font-semibold'>{bookInfo.title}</h2>
+                    <div className='flex gap-4 text-sm text-muted-foreground'>
+                      {bookInfo.author && <span>by {bookInfo.author}</span>}
+                      {bookInfo.publisher && <span>{bookInfo.publisher}</span>}
+                      {bookInfo.publication_year && (
+                        <span>{bookInfo.publication_year}</span>
+                      )}
+                    </div>
+                    {bookInfo.description && (
+                      <p className='text-sm text-muted-foreground mt-2'>
+                        {bookInfo.description}
+                      </p>
+                    )}
+                    {bookInfo.tags && bookInfo.tags.length > 0 && (
+                      <div className='flex gap-2 mt-2 flex-wrap'>
+                        {bookInfo.tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className='text-xs bg-secondary px-2 py-1 rounded'
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {bookInfo.description && (
-                    <p className='text-sm text-muted-foreground mt-2'>
-                      {bookInfo.description}
-                    </p>
-                  )}
-                  {bookInfo.tags && bookInfo.tags.length > 0 && (
-                    <div className='flex gap-2 mt-2 flex-wrap'>
-                      {bookInfo.tags.map((tag, i) => (
-                        <span
-                          key={i}
-                          className='text-xs bg-secondary px-2 py-1 rounded'
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                </div>
+
+                <div className='flex flex-col gap-2'>
+                  <Button
+                    onClick={handleProcessAllChapters}
+                    disabled={processingAllChapters}
+                    size='sm'
+                    variant='default'
+                    className='w-[110px] justify-start'
+                  >
+                    {processingAllChapters ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className='mr-2 h-4 w-4' />
+                        AI
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -336,42 +422,46 @@ export function BookNotesEditor() {
         </div>
 
         {bookInfo && (
-          <div className='space-y-4 mb-6'>
-            <div className='flex justify-between items-center'>
-              <Label className='text-lg font-semibold'>
-                Note{' '}
-                {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
-              </Label>
-              <Button
-                onClick={handleSaveNote}
-                disabled={saving || !hasUnsavedChanges}
-                variant='default'
-                size='sm'
-                className='w-[110px]'
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className='mr-2 h-4 w-4' />
-                    Save Note
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className='border rounded-lg overflow-hidden bg-background'>
-              <TiptapMarkdownEditor
-                value={noteContent}
-                onChange={handleEditorChange}
-                className='min-h-[150px]'
-                placeholder='Start writing your notes here...'
-                onInitialLoad={handleInitialLoad}
-              />
-            </div>
+          <div className='mb-6'>
+            <Card>
+              <CardHeader className='p-3 pb-2'>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='text-sm'>
+                    Note{' '}
+                    {hasUnsavedChanges && (
+                      <span className='text-amber-500'>*</span>
+                    )}
+                  </CardTitle>
+                  <Button
+                    onClick={handleSaveNote}
+                    disabled={saving || !hasUnsavedChanges}
+                    variant='default'
+                    size='sm'
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className='mr-2 h-4 w-4' />
+                        Save Note
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className='p-3'>
+                <TiptapMarkdownEditor
+                  value={noteContent}
+                  onChange={handleEditorChange}
+                  className='min-h-[150px]'
+                  placeholder='Start writing your notes here...'
+                  onInitialLoad={handleInitialLoad}
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -379,7 +469,7 @@ export function BookNotesEditor() {
 
         {bookInfo && (
           <div className='mb-6'>
-            <div className='flex justify-between items-center mb-4'>
+            <div className='mb-4'>
               <h3 className='text-lg font-semibold'>Book Chapters</h3>
             </div>
             <ChunkViewer

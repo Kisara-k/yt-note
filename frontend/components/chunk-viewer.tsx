@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
@@ -57,6 +57,7 @@ export function ChunkViewer({
   const [initialLoadedContent, setInitialLoadedContent] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [processingChapter, setProcessingChapter] = useState(false);
   const { getAccessToken } = useAuth();
 
   const resourceId = isBook ? bookId : videoId;
@@ -244,6 +245,70 @@ export function ChunkViewer({
     [chunkDetails, initialLoadedContent]
   );
 
+  const handleProcessChapterAI = async () => {
+    if (!chunkDetails) return;
+
+    setProcessingChapter(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/jobs/process-book-chapter-ai`
+        : `${API_BASE_URL}/api/jobs/process-video-chunk-ai`;
+
+      const body = isBook
+        ? {
+            book_id: resourceId,
+            chapter_id: chunkDetails.chunk_id,
+          }
+        : {
+            video_id: resourceId,
+            chunk_id: chunkDetails.chunk_id,
+          };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to start AI enrichment');
+      }
+
+      const result = await response.json();
+      toast.success(
+        `${
+          isBook ? 'Chapter' : 'Chunk'
+        } AI enrichment started! This may take a minute.`
+      );
+      console.log(
+        `${isBook ? 'Chapter' : 'Chunk'} AI enrichment started:`,
+        result
+      );
+
+      // Wait a bit then reload the chapter/chunk to see updates
+      setTimeout(async () => {
+        await loadChunkDetails(chunkDetails.chunk_id);
+        setProcessingChapter(false);
+      }, 5000);
+    } catch (error) {
+      console.error('AI enrichment error:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to start AI enrichment'
+      );
+      setProcessingChapter(false);
+    }
+  };
+
   const handleInitialLoad = useCallback(() => {
     setHasUnsavedChanges(false);
   }, []);
@@ -270,7 +335,7 @@ export function ChunkViewer({
 
   return (
     <div className='space-y-4'>
-      <div className='flex items-center gap-4'>
+      <div className='flex items-center gap-2'>
         <Select
           value={selectedChunkId?.toString()}
           onValueChange={(value) => setSelectedChunkId(parseInt(value))}
@@ -289,6 +354,27 @@ export function ChunkViewer({
             ))}
           </SelectContent>
         </Select>
+        {chunkDetails && (
+          <Button
+            size='sm'
+            onClick={handleProcessChapterAI}
+            disabled={processingChapter}
+            variant='outline'
+            className='whitespace-nowrap'
+          >
+            {processingChapter ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Sparkles className='mr-2 h-4 w-4' />
+                AI Process
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {loading ? (

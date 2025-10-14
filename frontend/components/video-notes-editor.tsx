@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // import { toast } from 'sonner';
 import {
   Save,
@@ -827,48 +828,46 @@ export function VideoNotesEditor() {
 
         {/* Editor Section */}
         {videoInfo && (
-          <div className='space-y-4 mb-6'>
-            <div className='flex justify-between items-center'>
-              <Label className='text-lg font-semibold'>
-                Note{' '}
-                {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
-              </Label>
-              <Button
-                onClick={handleSaveNote}
-                disabled={saving || !hasUnsavedChanges}
-                variant='default'
-                size='sm'
-                className='w-[110px]'
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className='mr-2 h-4 w-4' />
-                    Save Note
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className='border rounded-lg overflow-hidden bg-background'>
-              <TiptapMarkdownEditor
-                value={noteContent}
-                onChange={handleEditorChange}
-                className='min-h-[150px]'
-                placeholder='Start writing your notes here...'
-                onInitialLoad={handleInitialLoad}
-              />
-            </div>
-
-            {/* {hasUnsavedChanges && (
-              <p className='text-sm text-muted-foreground'>
-                You have unsaved changes. Click "Save Note" to save your work.
-              </p>
-            )} */}
+          <div className='mb-6'>
+            <Card>
+              <CardHeader className='p-3 pb-2'>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='text-sm'>
+                    Note{' '}
+                    {hasUnsavedChanges && (
+                      <span className='text-amber-500'>*</span>
+                    )}
+                  </CardTitle>
+                  <Button
+                    onClick={handleSaveNote}
+                    disabled={saving || !hasUnsavedChanges}
+                    variant='default'
+                    size='sm'
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className='mr-2 h-4 w-4' />
+                        Save Note
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className='p-3'>
+                <TiptapMarkdownEditor
+                  value={noteContent}
+                  onChange={handleEditorChange}
+                  className='min-h-[150px]'
+                  placeholder='Start writing your notes here...'
+                  onInitialLoad={handleInitialLoad}
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
