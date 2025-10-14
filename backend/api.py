@@ -614,6 +614,63 @@ async def regenerate_ai_field_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/api/chunks/{video_id}/{chunk_id}/update-ai-field")
+async def update_ai_field_endpoint(
+    video_id: str,
+    chunk_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually update a single AI field for a video chunk"""
+    try:
+        from db.subtitle_chunks_crud import update_chunk_ai_fields
+        
+        field_name = request.get('field_name')
+        field_value = request.get('field_value')
+        
+        # Validate field_name
+        valid_fields = ['title', 'field_1', 'field_2', 'field_3']
+        if field_name not in valid_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid field_name. Must be one of: {', '.join(valid_fields)}"
+            )
+        
+        if field_value is None:
+            raise HTTPException(status_code=400, detail="field_value is required")
+        
+        # Map field names to update_chunk_ai_fields parameters
+        kwargs = {
+            'video_id': video_id,
+            'chunk_id': chunk_id
+        }
+        
+        if field_name == 'title':
+            kwargs['short_title'] = field_value
+        elif field_name == 'field_1':
+            kwargs['ai_field_1'] = field_value
+        elif field_name == 'field_2':
+            kwargs['ai_field_2'] = field_value
+        elif field_name == 'field_3':
+            kwargs['ai_field_3'] = field_value
+        
+        result = update_chunk_ai_fields(**kwargs)
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update AI field")
+        
+        return {
+            'success': True,
+            'field_name': field_name,
+            'updated_chunk': result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/test/process-video-no-auth")
 async def process_video_no_auth(request: VideoRequest):
     """TEST: Process video without auth"""
@@ -988,6 +1045,61 @@ async def regenerate_book_chapter_ai_field_endpoint(
             raise HTTPException(status_code=500, detail=result['error'])
         
         return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/book/{book_id}/chapter/{chapter_id}/update-ai-field")
+async def update_book_chapter_ai_field_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually update a single AI field for a book chapter"""
+    try:
+        from db.book_chapters_crud import update_chapter_ai_fields
+        
+        field_name = request.get('field_name')
+        field_value = request.get('field_value')
+        
+        # Validate field_name (books don't have 'title')
+        valid_fields = ['field_1', 'field_2', 'field_3']
+        if field_name not in valid_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid field_name. Must be one of: {', '.join(valid_fields)}"
+            )
+        
+        if field_value is None:
+            raise HTTPException(status_code=400, detail="field_value is required")
+        
+        # Map field names to update_chapter_ai_fields parameters
+        kwargs = {
+            'book_id': book_id,
+            'chapter_id': chapter_id
+        }
+        
+        if field_name == 'field_1':
+            kwargs['ai_field_1'] = field_value
+        elif field_name == 'field_2':
+            kwargs['ai_field_2'] = field_value
+        elif field_name == 'field_3':
+            kwargs['ai_field_3'] = field_value
+        
+        result = update_chapter_ai_fields(**kwargs)
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update AI field")
+        
+        return {
+            'success': True,
+            'field_name': field_name,
+            'updated_chapter': result
+        }
         
     except HTTPException:
         raise

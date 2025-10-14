@@ -2,6 +2,45 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-01-14] - AI Fields Manual Edit Feature ✅
+
+### Added - Manual Editing for AI-Generated Fields
+
+Added the ability to manually edit AI-generated content (Summary, Key Points, Topics) with proper undo handling and database persistence.
+
+- **Frontend Component Enhancement (`ai-field-display.tsx`)**
+
+  - Edit button (pencil icon) appears to the left of the regenerate button
+  - Click to enter edit mode with a markdown textarea
+  - Cancel button (X icon) restores original content (proper undo)
+  - Save button (checkmark icon) updates the field in the database
+  - Save button disabled when no changes are made
+  - Loading states during save operation
+  - Toast notifications for success/error feedback
+
+- **Backend API Endpoints**
+
+  - `PUT /api/chunks/{video_id}/{chunk_id}/update-ai-field` - Update AI field for video chunks
+  - `PUT /api/book/{book_id}/chapter/{chapter_id}/update-ai-field` - Update AI field for book chapters
+  - Request body: `{"field_name": "field_1|field_2|field_3", "field_value": "content"}`
+  - Validates field names and updates only the specified field
+  - Returns updated record on success
+
+- **Integration (`chunk-viewer.tsx`)**
+
+  - Added `handleUpdateField()` function for API calls
+  - Wired up `onUpdate` prop for all three AI fields
+  - Updates local state immediately after successful save
+  - Works for both video chunks and book chapters
+  - Proper authentication handling
+
+- **Benefits**
+  - ✅ Users can manually correct or enhance AI-generated content
+  - ✅ Full undo support with cancel button
+  - ✅ Changes persist to database immediately
+  - ✅ Works seamlessly alongside AI regenerate feature
+  - ✅ Consistent experience across videos and books
+
 ## [2025-01-14] - AI Fields Markdown Display Enhancement ✅
 
 ### Improved - AI Fields Display

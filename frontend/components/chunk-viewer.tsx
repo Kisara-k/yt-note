@@ -147,7 +147,13 @@ export function ChunkViewer({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to load chunk details');
+          // Silently handle failed responses
+          console.error(
+            'Failed to load chunk details, status:',
+            response.status
+          );
+          setLoading(false);
+          return;
         }
 
         const data = await response.json();
@@ -171,7 +177,7 @@ export function ChunkViewer({
         setHasUnsavedChanges(false);
       } catch (error) {
         console.error('Error loading chunk details:', error);
-        toast.error('Failed to load chunk details');
+        // Silently handle the error - no user notification
       } finally {
         setLoading(false);
       }
@@ -388,6 +394,64 @@ export function ChunkViewer({
     }
   };
 
+  const handleUpdateField = async (fieldName: string, newContent: string) => {
+    if (!chunkDetails || !resourceId) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/update-ai-field`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/update-ai-field`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          field_name: fieldName,
+          field_value: newContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to update field');
+      }
+
+      const result = await response.json();
+
+      // Update local state with the new value
+      setChunkDetails((prev) => {
+        if (!prev) return prev;
+        const fieldKey =
+          fieldName === 'field_1'
+            ? 'ai_field_1'
+            : fieldName === 'field_2'
+            ? 'ai_field_2'
+            : 'ai_field_3';
+        return {
+          ...prev,
+          [fieldKey]: newContent,
+        };
+      });
+
+      toast.success('Field updated successfully');
+    } catch (error) {
+      console.error('Update field error:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to update field'
+      );
+      throw error; // Re-throw so the component knows it failed
+    }
+  };
+
   const handleInitialLoad = useCallback(() => {
     setHasUnsavedChanges(false);
   }, []);
@@ -450,6 +514,7 @@ export function ChunkViewer({
             content={chunkDetails?.ai_field_1}
             height='h-48'
             onRegenerate={() => handleRegenerateField('field_1')}
+            onUpdate={(newContent) => handleUpdateField('field_1', newContent)}
             isRegenerating={regeneratingField === 'field_1'}
             isLoading={loading || loadingChunks}
           />
@@ -459,6 +524,7 @@ export function ChunkViewer({
             content={chunkDetails?.ai_field_2}
             height='h-48'
             onRegenerate={() => handleRegenerateField('field_2')}
+            onUpdate={(newContent) => handleUpdateField('field_2', newContent)}
             isRegenerating={regeneratingField === 'field_2'}
             isLoading={loading || loadingChunks}
           />
@@ -468,6 +534,7 @@ export function ChunkViewer({
             content={chunkDetails?.ai_field_3}
             height='h-48'
             onRegenerate={() => handleRegenerateField('field_3')}
+            onUpdate={(newContent) => handleUpdateField('field_3', newContent)}
             isRegenerating={regeneratingField === 'field_3'}
             isLoading={loading || loadingChunks}
           />
