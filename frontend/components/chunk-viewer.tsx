@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { API_BASE_URL } from '@/lib/config';
+import { AIFieldDisplay } from '@/components/ai-field-display';
 
 interface ChunkIndex {
   chunk_id: number;
@@ -384,32 +385,18 @@ export function ChunkViewer({
       ) : chunkDetails ? (
         <div className='space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <Card>
-              <CardHeader className='p-3 pb-2'>
-                <CardTitle className='text-sm'>Summary</CardTitle>
-              </CardHeader>
-              <CardContent className='max-h-64 overflow-y-auto text-sm'>
-                {chunkDetails.ai_field_1 || 'Not available'}
-              </CardContent>
-            </Card>
+            <AIFieldDisplay title='Summary' content={chunkDetails.ai_field_1} />
 
-            <Card>
-              <CardHeader className='p-3 pb-2'>
-                <CardTitle className='text-sm'>Key Points</CardTitle>
-              </CardHeader>
-              <CardContent className='max-h-64 overflow-y-auto text-sm'>
-                {chunkDetails.ai_field_2 || 'Not available'}
-              </CardContent>
-            </Card>
+            <AIFieldDisplay
+              title='Key Points'
+              content={chunkDetails.ai_field_2}
+            />
 
-            <Card>
-              <CardHeader className='p-3 pb-2'>
-                <CardTitle className='text-sm'>Topics</CardTitle>
-              </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-sm'>
-                {chunkDetails.ai_field_3 || 'Not available'}
-              </CardContent>
-            </Card>
+            <AIFieldDisplay
+              title='Topics'
+              content={chunkDetails.ai_field_3}
+              maxHeight='max-h-48'
+            />
 
             <Card>
               <CardHeader className='p-3 pb-2'>
@@ -417,7 +404,7 @@ export function ChunkViewer({
                   {isBook ? 'Chapter' : 'Chunk'} Text
                 </CardTitle>
               </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-sm'>
+              <CardContent className='max-h-48 overflow-y-auto text-xs'>
                 {chunkDetails.chunk_text || 'Not available'}
               </CardContent>
             </Card>
