@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { CustomTooltip } from '@/components/custom-tooltip';
 
 interface BookInfo {
   id: string;
@@ -397,25 +398,27 @@ export function BookNotesEditor() {
                 </div>
 
                 <div className='flex flex-col gap-2'>
-                  <Button
-                    onClick={handleProcessAllChapters}
-                    disabled={processingAllChapters}
-                    size='sm'
-                    variant='default'
-                    className='w-[110px] justify-start'
-                  >
-                    {processingAllChapters ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className='mr-2 h-4 w-4' />
-                        AI
-                      </>
-                    )}
-                  </Button>
+                  <CustomTooltip content='Generate AI enrichment for all book chapters'>
+                    <Button
+                      onClick={handleProcessAllChapters}
+                      disabled={processingAllChapters}
+                      size='sm'
+                      variant='default'
+                      className='w-[110px] justify-start'
+                    >
+                      {processingAllChapters ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className='mr-2 h-4 w-4' />
+                          AI
+                        </>
+                      )}
+                    </Button>
+                  </CustomTooltip>
                 </div>
               </div>
             </div>

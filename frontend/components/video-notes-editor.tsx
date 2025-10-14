@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { CustomTooltip } from '@/components/custom-tooltip';
 
 interface VideoInfo {
   video_id: string;
@@ -783,44 +784,48 @@ export function VideoNotesEditor() {
                 </div>
 
                 <div className='flex flex-col gap-2'>
-                  <Button
-                    onClick={handleProcessSubtitles}
-                    disabled={processingSubtitles}
-                    size='sm'
-                    variant='outline'
-                    className='w-[110px] justify-start'
-                  >
-                    {processingSubtitles ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className='mr-2 h-4 w-4' />
-                        Subtitles
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleProcessAI}
-                    disabled={!hasSubtitles || processingAI}
-                    size='sm'
-                    variant='default'
-                    className='w-[110px] justify-start'
-                  >
-                    {processingAI ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className='mr-2 h-4 w-4' />
-                        AI
-                      </>
-                    )}
-                  </Button>
+                  <CustomTooltip content='Download and process video subtitles into chunks'>
+                    <Button
+                      onClick={handleProcessSubtitles}
+                      disabled={processingSubtitles}
+                      size='sm'
+                      variant='outline'
+                      className='w-[110px] justify-start'
+                    >
+                      {processingSubtitles ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className='mr-2 h-4 w-4' />
+                          Subtitles
+                        </>
+                      )}
+                    </Button>
+                  </CustomTooltip>
+                  <CustomTooltip content='Generate AI enrichment for all video chunks'>
+                    <Button
+                      onClick={handleProcessAI}
+                      disabled={!hasSubtitles || processingAI}
+                      size='sm'
+                      variant='default'
+                      className='w-[110px] justify-start'
+                    >
+                      {processingAI ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className='mr-2 h-4 w-4' />
+                          AI
+                        </>
+                      )}
+                    </Button>
+                  </CustomTooltip>
                 </div>
               </div>
             </div>

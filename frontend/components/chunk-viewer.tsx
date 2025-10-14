@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
+import { CustomTooltip } from '@/components/custom-tooltip';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { NoteEditor } from '@/components/note-editor';
 import { API_BASE_URL } from '@/lib/config';
@@ -487,25 +488,31 @@ export function ChunkViewer({
             ))}
           </SelectContent>
         </Select>
-        <Button
-          size='sm'
-          onClick={handleProcessChapterAI}
-          disabled={processingChapter || !chunkDetails || loadingChunks}
-          variant='outline'
-          className='whitespace-nowrap'
+        <CustomTooltip
+          content={`Process AI enrichment for this ${
+            isBook ? 'chapter' : 'chunk'
+          }`}
         >
-          {processingChapter ? (
-            <>
-              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Sparkles className='mr-2 h-4 w-4' />
-              AI Process
-            </>
-          )}
-        </Button>
+          <Button
+            size='sm'
+            onClick={handleProcessChapterAI}
+            disabled={processingChapter || !chunkDetails || loadingChunks}
+            variant='outline'
+            className='whitespace-nowrap'
+          >
+            {processingChapter ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Sparkles className='mr-2 h-4 w-4' />
+                AI Process
+              </>
+            )}
+          </Button>
+        </CustomTooltip>
       </div>
 
       <div className='space-y-4'>
