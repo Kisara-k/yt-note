@@ -456,45 +456,43 @@ export function ChunkViewer({
         )}
       </div>
 
-      {loading ? (
-        <div className='flex items-center justify-center p-8'>
-          <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
-        </div>
-      ) : chunkDetails ? (
+      {chunkDetails || loading ? (
         <div className='space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <AIFieldDisplay
               title='Summary'
-              content={chunkDetails.ai_field_1}
+              content={chunkDetails?.ai_field_1}
+              height='h-48'
               onRegenerate={() => handleRegenerateField('field_1')}
               isRegenerating={regeneratingField === 'field_1'}
+              isLoading={loading}
             />
 
             <AIFieldDisplay
               title='Key Points'
-              content={chunkDetails.ai_field_2}
+              content={chunkDetails?.ai_field_2}
+              height='h-48'
               onRegenerate={() => handleRegenerateField('field_2')}
               isRegenerating={regeneratingField === 'field_2'}
+              isLoading={loading}
             />
 
             <AIFieldDisplay
               title='Topics'
-              content={chunkDetails.ai_field_3}
-              maxHeight='max-h-48'
+              content={chunkDetails?.ai_field_3}
+              height='h-48'
               onRegenerate={() => handleRegenerateField('field_3')}
               isRegenerating={regeneratingField === 'field_3'}
+              isLoading={loading}
             />
 
-            <Card>
-              <CardHeader className='p-3 pb-2'>
-                <CardTitle className='text-sm'>
-                  {isBook ? 'Chapter' : 'Chunk'} Text
-                </CardTitle>
-              </CardHeader>
-              <CardContent className='max-h-48 overflow-y-auto text-xs'>
-                {chunkDetails.chunk_text || 'Not available'}
-              </CardContent>
-            </Card>
+            <AIFieldDisplay
+              title={isBook ? 'Chapter Text' : 'Chunk Text'}
+              content={chunkDetails?.chunk_text}
+              height='h-48'
+              isLoading={loading}
+              useMarkdown={false}
+            />
           </div>
 
           <Card>
@@ -509,7 +507,7 @@ export function ChunkViewer({
                 <Button
                   size='sm'
                   onClick={saveChunkNote}
-                  disabled={isSavingNote || !hasUnsavedChanges}
+                  disabled={isSavingNote || !hasUnsavedChanges || loading}
                   variant='default'
                 >
                   {isSavingNote ? (
@@ -527,14 +525,20 @@ export function ChunkViewer({
               </div>
             </CardHeader>
             <CardContent className='p-3'>
-              <TiptapMarkdownEditor
-                value={noteContent}
-                onChange={handleEditorChange}
-                placeholder={`Add your notes for this ${
-                  isBook ? 'chapter' : 'chunk'
-                }...`}
-                onInitialLoad={handleInitialLoad}
-              />
+              {loading ? (
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                </div>
+              ) : (
+                <TiptapMarkdownEditor
+                  value={noteContent}
+                  onChange={handleEditorChange}
+                  placeholder={`Add your notes for this ${
+                    isBook ? 'chapter' : 'chunk'
+                  }...`}
+                  onInitialLoad={handleInitialLoad}
+                />
+              )}
             </CardContent>
           </Card>
         </div>

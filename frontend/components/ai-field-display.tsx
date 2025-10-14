@@ -8,21 +8,25 @@ import { RefreshCw } from 'lucide-react';
 interface AIFieldDisplayProps {
   title: string;
   content: string | null | undefined;
-  maxHeight?: string;
+  height?: string;
   onRegenerate?: () => void;
   isRegenerating?: boolean;
+  isLoading?: boolean;
+  useMarkdown?: boolean;
 }
 
 export function AIFieldDisplay({
   title,
   content,
-  maxHeight = 'max-h-64',
+  height = 'h-48',
   onRegenerate,
   isRegenerating = false,
+  isLoading = false,
+  useMarkdown = true,
 }: AIFieldDisplayProps) {
   return (
-    <Card>
-      <CardHeader className='p-3 pb-2'>
+    <Card className='flex flex-col'>
+      <CardHeader className='px-3 pt-1.5 pb-1.5 pr-1.5 shrink-0'>
         <div className='flex items-center justify-between gap-2'>
           <CardTitle className='text-sm'>{title}</CardTitle>
           {onRegenerate && (
@@ -30,38 +34,43 @@ export function AIFieldDisplay({
               size='sm'
               variant='ghost'
               onClick={onRegenerate}
-              disabled={isRegenerating}
-              className='h-7 w-7 p-0 shrink-0'
+              disabled={isRegenerating || isLoading}
+              className='h-5 w-5 p-0 shrink-0'
               title='Regenerate this field'
             >
               <RefreshCw
-                className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`}
+                className={`h-3 w-3 ${isRegenerating ? 'animate-spin' : ''}`}
               />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className={`${maxHeight} overflow-y-auto`}>
-        {/* 
-          Styling explanation:
-          - text-xs: Base Tailwind utility for extra small text (0.75rem / 12px)
-          - prose: Tailwind Typography plugin that adds beautiful default styles for markdown/HTML content
-          - prose-sm: Small prose variant (reduces default prose sizing)
-          - prose-*:text-xs: Overrides specific prose element sizes (p, headings, ul, ol, li, strong, em) to text-xs
-          - prose-*:my-*: Controls vertical spacing between elements (my-1 = 0.25rem, my-0.5 = 0.125rem)
-          
-          Why both prose and text-xs?
-          - prose provides semantic markdown styling (spacing, colors, line-height, etc.)
-          - text-xs sets the base font size small, then prose-*:text-xs enforces it on all markdown elements
-          - Without prose: plain unstyled text. Without text-xs: prose's default sizes are too large.
-        */}
-        <div className='text-xs prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-p:text-xs prose-headings:my-1 prose-headings:text-xs prose-ul:my-1 prose-ul:text-xs prose-ol:my-1 prose-ol:text-xs prose-li:my-0.5 prose-li:text-xs prose-strong:text-xs prose-em:text-xs'>
-          {content ? (
-            <ReactMarkdown>{content}</ReactMarkdown>
-          ) : (
-            <span className='text-muted-foreground text-xs'>Not available</span>
-          )}
-        </div>
+      <CardContent
+        className={`${height} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500`}
+        style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgb(156 163 175) transparent',
+        }}
+      >
+        {isLoading && !isRegenerating ? (
+          <div className='flex items-center justify-center py-4'>
+            <RefreshCw className='h-4 w-4 animate-spin text-muted-foreground' />
+          </div>
+        ) : (
+          <div className='text-xs prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-p:text-xs prose-headings:my-1 prose-headings:text-xs prose-ul:my-1 prose-ul:text-xs prose-ol:my-1 prose-ol:text-xs prose-li:my-0.5 prose-li:text-xs prose-strong:text-xs prose-em:text-xs'>
+            {content ? (
+              useMarkdown ? (
+                <ReactMarkdown>{content}</ReactMarkdown>
+              ) : (
+                <div className='whitespace-pre-wrap'>{content}</div>
+              )
+            ) : (
+              <span className='text-muted-foreground text-xs'>
+                Not available
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
