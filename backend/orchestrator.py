@@ -611,3 +611,190 @@ def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
         traceback.print_exc()
         return False
 
+
+def regenerate_video_chunk_ai_field(
+    video_id: str,
+    chunk_id: int,
+    field_name: str
+) -> dict:
+    """
+    Regenerate a single AI field for a video chunk
+    
+    Args:
+        video_id: Video identifier
+        chunk_id: Chunk identifier
+        field_name: Field to regenerate ('title', 'field_1', 'field_2', 'field_3')
+        
+    Returns:
+        Dict with the regenerated field value or error
+    """
+    try:
+        # Step 1: Get chunk from database
+        from db.subtitle_chunks_crud import get_chunk_details
+        chunk = get_chunk_details(video_id, chunk_id)
+        
+        if not chunk:
+            return {'error': 'Chunk not found'}
+        
+        if not chunk.get('chunk_text'):
+            return {'error': 'No chunk text found'}
+        
+        # Step 2: Get prompts with only the requested field
+        from prompts import get_all_prompts
+        all_prompts = get_all_prompts(content_type='video')
+        
+        # Create selective prompts - only the requested field
+        selective_prompts = {
+            'title': all_prompts.get('title', '') if field_name == 'title' else '',
+            'field_1': all_prompts.get('field_1', '') if field_name == 'field_1' else '',
+            'field_2': all_prompts.get('field_2', '') if field_name == 'field_2' else '',
+            'field_3': all_prompts.get('field_3', '') if field_name == 'field_3' else ''
+        }
+        
+        # Step 3: Enrich with AI (only the selected field)
+        ai_fields = enrich_chunk(
+            text=chunk['chunk_text'],
+            prompts=selective_prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER
+        )
+        
+        # Step 4: Update database with only the regenerated field
+        from db.subtitle_chunks_crud import update_chunk_ai_fields
+        
+        update_data = {
+            'short_title': ai_fields.get('title') if field_name == 'title' else None,
+            'ai_field_1': ai_fields.get('field_1') if field_name == 'field_1' else None,
+            'ai_field_2': ai_fields.get('field_2') if field_name == 'field_2' else None,
+            'ai_field_3': ai_fields.get('field_3') if field_name == 'field_3' else None
+        }
+        
+        # Filter out None values
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        
+        if not update_data:
+            return {'error': 'Invalid field name'}
+        
+        updated = update_chunk_ai_fields(
+            video_id=video_id,
+            chunk_id=chunk_id,
+            **update_data
+        )
+        
+        if updated:
+            # Return the updated field value
+            field_map = {
+                'title': 'short_title',
+                'field_1': 'ai_field_1',
+                'field_2': 'ai_field_2',
+                'field_3': 'ai_field_3'
+            }
+            db_field = field_map.get(field_name)
+            return {
+                'success': True,
+                'field': field_name,
+                'value': updated.get(db_field, '')
+            }
+        else:
+            return {'error': 'Failed to update database'}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {'error': str(e)}
+
+
+def regenerate_book_chapter_ai_field(
+    book_id: str,
+    chapter_id: int,
+    field_name: str
+) -> dict:
+    """
+    Regenerate a single AI field for a book chapter
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Chapter identifier
+        field_name: Field to regenerate ('field_1', 'field_2', 'field_3')
+        
+    Returns:
+        Dict with the regenerated field value or error
+    """
+    try:
+        # Step 1: Get chapter from database
+        from db.book_chapters_crud import get_chapter_details
+        chapter = get_chapter_details(book_id, chapter_id)
+        
+        if not chapter:
+            return {'error': 'Chapter not found'}
+        
+        if not chapter.get('chapter_text'):
+            return {'error': 'No chapter text found'}
+        
+        # Step 2: Get prompts with only the requested field
+        from prompts import get_all_prompts
+        all_prompts = get_all_prompts(content_type='book')
+        
+        # Create selective prompts - only the requested field
+        # Note: Books don't have 'title' field
+        selective_prompts = {
+            'field_1': all_prompts.get('field_1', '') if field_name == 'field_1' else '',
+            'field_2': all_prompts.get('field_2', '') if field_name == 'field_2' else '',
+            'field_3': all_prompts.get('field_3', '') if field_name == 'field_3' else ''
+        }
+        
+        # Step 3: Enrich with AI (only the selected field)
+        ai_fields = enrich_chunk(
+            text=chapter['chapter_text'],
+            prompts=selective_prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER
+        )
+        
+        # Step 4: Update database with only the regenerated field
+        from db.book_chapters_crud import update_chapter_ai_fields
+        
+        update_data = {
+            'ai_field_1': ai_fields.get('field_1') if field_name == 'field_1' else None,
+            'ai_field_2': ai_fields.get('field_2') if field_name == 'field_2' else None,
+            'ai_field_3': ai_fields.get('field_3') if field_name == 'field_3' else None
+        }
+        
+        # Filter out None values
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        
+        if not update_data:
+            return {'error': 'Invalid field name'}
+        
+        updated = update_chapter_ai_fields(
+            book_id=book_id,
+            chapter_id=chapter_id,
+            **update_data
+        )
+        
+        if updated:
+            # Return the updated field value
+            field_map = {
+                'field_1': 'ai_field_1',
+                'field_2': 'ai_field_2',
+                'field_3': 'ai_field_3'
+            }
+            db_field = field_map.get(field_name)
+            return {
+                'success': True,
+                'field': field_name,
+                'value': updated.get(db_field, '')
+            }
+        else:
+            return {'error': 'Failed to update database'}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {'error': str(e)}
+
+

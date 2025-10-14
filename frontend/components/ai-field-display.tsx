@@ -2,22 +2,44 @@
 
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 
 interface AIFieldDisplayProps {
   title: string;
   content: string | null | undefined;
   maxHeight?: string;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 export function AIFieldDisplay({
   title,
   content,
   maxHeight = 'max-h-64',
+  onRegenerate,
+  isRegenerating = false,
 }: AIFieldDisplayProps) {
   return (
     <Card>
       <CardHeader className='p-3 pb-2'>
-        <CardTitle className='text-sm'>{title}</CardTitle>
+        <div className='flex items-center justify-between gap-2'>
+          <CardTitle className='text-sm'>{title}</CardTitle>
+          {onRegenerate && (
+            <Button
+              size='sm'
+              variant='ghost'
+              onClick={onRegenerate}
+              disabled={isRegenerating}
+              className='h-7 w-7 p-0 shrink-0'
+              title='Regenerate this field'
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className={`${maxHeight} overflow-y-auto`}>
         {/* 

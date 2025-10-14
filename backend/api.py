@@ -138,6 +138,14 @@ class VideoChunkAIRequest(BaseModel):
     chunk_id: int
 
 
+class RegenerateAIFieldRequest(BaseModel):
+    video_id: Optional[str] = None
+    chunk_id: Optional[int] = None
+    book_id: Optional[str] = None
+    chapter_id: Optional[int] = None
+    field_name: str  # 'title', 'field_1', 'field_2', or 'field_3' (books don't have 'title')
+
+
 class VerifyEmailRequest(BaseModel):
     email: str
 
@@ -570,6 +578,42 @@ async def process_video_chunk_ai_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/chunks/{video_id}/{chunk_id}/regenerate-ai-field")
+async def regenerate_ai_field_endpoint(
+    video_id: str,
+    chunk_id: int,
+    request: RegenerateAIFieldRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Regenerate a single AI field for a video chunk"""
+    try:
+        from orchestrator import regenerate_video_chunk_ai_field
+        
+        # Validate field_name
+        valid_fields = ['title', 'field_1', 'field_2', 'field_3']
+        if request.field_name not in valid_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid field_name. Must be one of: {', '.join(valid_fields)}"
+            )
+        
+        result = regenerate_video_chunk_ai_field(
+            video_id=video_id,
+            chunk_id=chunk_id,
+            field_name=request.field_name
+        )
+        
+        if 'error' in result:
+            raise HTTPException(status_code=500, detail=result['error'])
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/test/process-video-no-auth")
 async def process_video_no_auth(request: VideoRequest):
     """TEST: Process video without auth"""
@@ -908,6 +952,42 @@ async def process_book_chapter_ai_endpoint(
             "chapter_id": request.chapter_id,
             "status": "processing"
         }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/{book_id}/chapter/{chapter_id}/regenerate-ai-field")
+async def regenerate_book_chapter_ai_field_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: RegenerateAIFieldRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Regenerate a single AI field for a book chapter"""
+    try:
+        from orchestrator import regenerate_book_chapter_ai_field
+        
+        # Validate field_name (books don't have 'title')
+        valid_fields = ['field_1', 'field_2', 'field_3']
+        if request.field_name not in valid_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid field_name. Must be one of: {', '.join(valid_fields)}"
+            )
+        
+        result = regenerate_book_chapter_ai_field(
+            book_id=book_id,
+            chapter_id=chapter_id,
+            field_name=request.field_name
+        )
+        
+        if 'error' in result:
+            raise HTTPException(status_code=500, detail=result['error'])
+        
+        return result
         
     except HTTPException:
         raise

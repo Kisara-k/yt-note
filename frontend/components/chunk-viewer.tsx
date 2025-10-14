@@ -59,6 +59,9 @@ export function ChunkViewer({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [processingChapter, setProcessingChapter] = useState(false);
+  const [regeneratingField, setRegeneratingField] = useState<string | null>(
+    null
+  );
   const { getAccessToken } = useAuth();
 
   const resourceId = isBook ? bookId : videoId;
@@ -310,6 +313,81 @@ export function ChunkViewer({
     }
   };
 
+  const handleRegenerateField = async (fieldName: string) => {
+    if (!chunkDetails) return;
+
+    setRegeneratingField(fieldName);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/regenerate-ai-field`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/regenerate-ai-field`;
+
+      const body = isBook
+        ? {
+            book_id: resourceId,
+            chapter_id: chunkDetails.chunk_id,
+            field_name: fieldName,
+          }
+        : {
+            video_id: resourceId,
+            chunk_id: chunkDetails.chunk_id,
+            field_name: fieldName,
+          };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to regenerate field');
+      }
+
+      const result = await response.json();
+
+      // Update the local state with the new value
+      setChunkDetails((prev) => {
+        if (!prev) return prev;
+
+        const fieldMap: Record<string, keyof ChunkDetails> = {
+          title: 'short_title',
+          field_1: 'ai_field_1',
+          field_2: 'ai_field_2',
+          field_3: 'ai_field_3',
+        };
+
+        const dbField = fieldMap[fieldName];
+        if (dbField) {
+          return {
+            ...prev,
+            [dbField]: result.value,
+          };
+        }
+        return prev;
+      });
+
+      toast.success('Field regenerated successfully!');
+    } catch (error) {
+      console.error('Regenerate field error:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to regenerate field'
+      );
+    } finally {
+      setRegeneratingField(null);
+    }
+  };
+
   const handleInitialLoad = useCallback(() => {
     setHasUnsavedChanges(false);
   }, []);
@@ -385,17 +463,26 @@ export function ChunkViewer({
       ) : chunkDetails ? (
         <div className='space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <AIFieldDisplay title='Summary' content={chunkDetails.ai_field_1} />
+            <AIFieldDisplay
+              title='Summary'
+              content={chunkDetails.ai_field_1}
+              onRegenerate={() => handleRegenerateField('field_1')}
+              isRegenerating={regeneratingField === 'field_1'}
+            />
 
             <AIFieldDisplay
               title='Key Points'
               content={chunkDetails.ai_field_2}
+              onRegenerate={() => handleRegenerateField('field_2')}
+              isRegenerating={regeneratingField === 'field_2'}
             />
 
             <AIFieldDisplay
               title='Topics'
               content={chunkDetails.ai_field_3}
               maxHeight='max-h-48'
+              onRegenerate={() => handleRegenerateField('field_3')}
+              isRegenerating={regeneratingField === 'field_3'}
             />
 
             <Card>
