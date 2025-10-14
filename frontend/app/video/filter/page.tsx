@@ -1,12 +1,20 @@
 'use client';
 
 import { VideoFilter } from '@/components/video-filter';
-import { LoginForm } from '@/components/login-form';
 import { useAuth } from '@/lib/auth-context';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function FilterPage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
 
   if (loading) {
     return (
@@ -17,7 +25,7 @@ export default function FilterPage() {
   }
 
   if (!user) {
-    return <LoginForm />;
+    return null;
   }
 
   return <VideoFilter />;

@@ -221,7 +221,7 @@ export function VideoNotesEditor() {
       setVideoInfo(videoData);
 
       // Update URL parameter with the video ID
-      router.push(`/?v=${videoData.video_id}`, { scroll: false });
+      router.push(`/video?v=${videoData.video_id}`, { scroll: false });
 
       // toast.success(`Loaded: ${videoData.title}`);
 
@@ -635,7 +635,7 @@ export function VideoNotesEditor() {
           setNoteContent(loadedNote);
           setInitialLoadedContent(loadedNote);
           setVideoInfo(videoData);
-          router.push(`/?v=${videoData.video_id}`, { scroll: false });
+          router.push(`/video?v=${videoData.video_id}`, { scroll: false });
 
           await checkSubtitles(videoData.video_id);
           chunkViewerKey.current += 1;
@@ -666,7 +666,7 @@ export function VideoNotesEditor() {
               <Button
                 variant='outline'
                 size='sm'
-                onClick={() => router.push('/filter')}
+                onClick={() => router.push('/video/filter')}
               >
                 <Filter className='mr-2 h-4 w-4' />
                 All Videos
@@ -674,7 +674,7 @@ export function VideoNotesEditor() {
               <Button
                 variant='outline'
                 size='sm'
-                onClick={() => router.push('/creator-notes')}
+                onClick={() => router.push('/video/creator-notes')}
               >
                 <User className='mr-2 h-4 w-4' />
                 Creators

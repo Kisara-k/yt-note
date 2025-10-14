@@ -19,6 +19,9 @@ import { API_BASE_URL } from '@/lib/config';
 interface ChunkIndex {
   chunk_id: number;
   short_title: string;
+  chapter_id?: number;
+  chapter_title?: string;
+  ai_field_1?: string;
 }
 
 interface ChunkDetails {
@@ -29,13 +32,22 @@ interface ChunkDetails {
   ai_field_2: string;
   ai_field_3: string;
   note_content: string | null;
+  chapter_id?: number;
+  chapter_title?: string;
+  chapter_text?: string;
 }
 
 interface ChunkViewerProps {
-  videoId: string;
+  videoId?: string;
+  bookId?: string;
+  isBook?: boolean;
 }
 
-export function ChunkViewer({ videoId }: ChunkViewerProps) {
+export function ChunkViewer({
+  videoId,
+  bookId,
+  isBook = false,
+}: ChunkViewerProps) {
   const [chunkIndex, setChunkIndex] = useState<ChunkIndex[]>([]);
   const [selectedChunkId, setSelectedChunkId] = useState<number | null>(null);
   const [chunkDetails, setChunkDetails] = useState<ChunkDetails | null>(null);
@@ -47,7 +59,11 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const { getAccessToken } = useAuth();
 
+  const resourceId = isBook ? bookId : videoId;
+
   const loadChunkIndex = useCallback(async () => {
+    if (!resourceId) return;
+
     setLoadingChunks(true);
     try {
       const token = await getAccessToken();
@@ -58,17 +74,17 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/chunks/${videoId}/index`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapters/index`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/index`;
+
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
-        // If it's a 404 or 500, might just mean no chunks exist yet
         if (response.status === 404 || response.status === 500) {
           setChunkIndex([]);
           setLoadingChunks(false);
@@ -78,22 +94,34 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
       }
 
       const data = await response.json();
-      setChunkIndex(data.index || []);
+      const indexData = data.index || [];
 
-      if (data.index && data.index.length > 0) {
-        setSelectedChunkId(data.index[0].chunk_id);
+      // Map book chapters to chunk format
+      const mappedIndex = isBook
+        ? indexData.map((chapter: any) => ({
+            chunk_id: chapter.chapter_id,
+            short_title: chapter.chapter_title,
+            ai_field_1: chapter.ai_field_1,
+          }))
+        : indexData;
+
+      setChunkIndex(mappedIndex);
+
+      if (mappedIndex.length > 0) {
+        setSelectedChunkId(mappedIndex[0].chunk_id);
       }
     } catch (error) {
       console.error('Error loading chunk index:', error);
-      // Don't show error toast if chunks simply don't exist yet
       setChunkIndex([]);
     } finally {
       setLoadingChunks(false);
     }
-  }, [videoId, getAccessToken]);
+  }, [resourceId, isBook, getAccessToken]);
 
   const loadChunkDetails = useCallback(
     async (chunkId: number) => {
+      if (!resourceId) return;
+
       setLoading(true);
       try {
         const token = await getAccessToken();
@@ -103,23 +131,38 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
           return;
         }
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/chunks/${videoId}/${chunkId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const endpoint = isBook
+          ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkId}`
+          : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}`;
+
+        const response = await fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (!response.ok) {
           throw new Error('Failed to load chunk details');
         }
 
         const data = await response.json();
-        setChunkDetails(data);
-        setNoteContent(data.note_content || '');
-        setInitialLoadedContent(data.note_content || '');
+
+        // Map book chapter to chunk format
+        const mappedData = isBook
+          ? {
+              chunk_id: data.chapter_id,
+              short_title: data.chapter_title,
+              chunk_text: data.chapter_text,
+              ai_field_1: data.ai_field_1 || '',
+              ai_field_2: data.ai_field_2 || '',
+              ai_field_3: data.ai_field_3 || '',
+              note_content: data.note_content,
+            }
+          : data;
+
+        setChunkDetails(mappedData);
+        setNoteContent(mappedData.note_content || '');
+        setInitialLoadedContent(mappedData.note_content || '');
         setHasUnsavedChanges(false);
       } catch (error) {
         console.error('Error loading chunk details:', error);
@@ -128,14 +171,14 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
         setLoading(false);
       }
     },
-    [videoId, getAccessToken]
+    [resourceId, isBook, getAccessToken]
   );
 
   useEffect(() => {
-    if (videoId) {
+    if (resourceId) {
       loadChunkIndex();
     }
-  }, [videoId, loadChunkIndex]);
+  }, [resourceId, loadChunkIndex]);
 
   useEffect(() => {
     if (selectedChunkId !== null) {
@@ -144,7 +187,7 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
   }, [selectedChunkId, loadChunkDetails]);
 
   const saveChunkNote = async () => {
-    if (!chunkDetails) return;
+    if (!chunkDetails || !resourceId) return;
 
     setIsSavingNote(true);
     try {
@@ -155,17 +198,26 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/chunks/${videoId}/${chunkDetails.chunk_id}/note`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ note_content: noteContent }),
-        }
-      );
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/note`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/note`;
+
+      const response = await fetch(endpoint, {
+        method: isBook ? 'POST' : 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(
+          isBook
+            ? {
+                book_id: resourceId,
+                chapter_id: chunkDetails.chunk_id,
+                note_content: noteContent,
+              }
+            : { note_content: noteContent }
+        ),
+      });
 
       if (!response.ok) {
         throw new Error('Failed to save chunk note');
@@ -208,8 +260,9 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
     return (
       <Card>
         <CardContent className='p-6 text-center text-muted-foreground'>
-          No chunks available for this video. Process the video to generate
-          chunks.
+          {isBook
+            ? 'No chapters available for this book.'
+            : 'No chunks available for this video. Process the video to generate chunks.'}
         </CardContent>
       </Card>
     );
@@ -231,7 +284,7 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
                 key={chunk.chunk_id}
                 value={chunk.chunk_id.toString()}
               >
-                {chunk.chunk_id + 1}. {chunk.short_title || 'Untitled'}
+                {chunk.chunk_id}. {chunk.short_title || 'Untitled'}
               </SelectItem>
             ))}
           </SelectContent>
@@ -274,7 +327,9 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
 
             <Card>
               <CardHeader className='p-3 pb-2'>
-                <CardTitle className='text-sm'>Chunk Text</CardTitle>
+                <CardTitle className='text-sm'>
+                  {isBook ? 'Chapter' : 'Chunk'} Text
+                </CardTitle>
               </CardHeader>
               <CardContent className='max-h-48 overflow-y-auto text-sm'>
                 {chunkDetails.chunk_text || 'Not available'}
@@ -282,12 +337,11 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
             </Card>
           </div>
 
-          {/* Chunk Note Editor */}
           <Card>
             <CardHeader className='p-3 pb-2'>
               <div className='flex items-center justify-between'>
                 <CardTitle className='text-sm'>
-                  Chunk Notes{' '}
+                  {isBook ? 'Chapter' : 'Chunk'} Notes{' '}
                   {hasUnsavedChanges && (
                     <span className='text-amber-500'>*</span>
                   )}
@@ -316,7 +370,9 @@ export function ChunkViewer({ videoId }: ChunkViewerProps) {
               <TiptapMarkdownEditor
                 value={noteContent}
                 onChange={handleEditorChange}
-                placeholder='Add your notes for this chunk...'
+                placeholder={`Add your notes for this ${
+                  isBook ? 'chapter' : 'chunk'
+                }...`}
                 onInitialLoad={handleInitialLoad}
               />
             </CardContent>

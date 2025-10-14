@@ -1,17 +1,27 @@
-# YouTube Notes Application
+# YouTube Notes & Books Application
 
-A full-stack application for creating and managing markdown notes for YouTube videos with **AI-powered subtitle analysis**. Enter a video URL, process it with AI to get intelligent chunks, summaries, and key points, then write notes using a powerful TipTap markdown editor.
+A full-stack application for creating and managing markdown notes for **YouTube videos** and **books** with AI-powered analysis. Process videos with AI-generated insights or upload books for chapter-by-chapter note taking.
 
-## 🎯 NEW: AI-Powered Features
+## 🎯 Features
+
+### YouTube Videos
 
 - ✅ **Subtitle Extraction**: Automatic subtitle download via yt-dlp
 - ✅ **Intelligent Chunking**: Break videos into 5-minute segments
 - ✅ **OpenAI Analysis**: AI-generated titles, summaries, key points, and topics for each chunk
 - ✅ **Chunk Viewer**: Browse and explore video segments with AI insights
 - ✅ **Background Processing**: Async job queue for video processing
-- 🎉 **Process any YouTube video and get instant AI-powered insights!**
 
-**For complete implementation details**: See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md)
+### Books (NEW!)
+
+- ✅ **Book Management**: Upload books via JSON with chapter structure
+- ✅ **Chapter Storage**: Secure storage in separate database with Supabase Storage
+- ✅ **Chapter Notes**: Take notes on individual chapters
+- ✅ **Book Routes**: `/book` for viewing, `/book/add` for uploading, `/book/filter` for browsing
+- ✅ **Filter & Search**: Browse all books with filtering by title, author, tags
+- ✅ **Custom Book IDs**: User-defined identifiers (e.g., `practical_guide_123`)
+
+**For complete implementation details**: See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) and [BOOKS_SETUP.md](BOOKS_SETUP.md)
 
 ## 🔐 Authentication Required
 
@@ -29,8 +39,9 @@ A full-stack application for creating and managing markdown notes for YouTube vi
 **Web Application** 🎉
 
 - ✅ Secure login/signup with Supabase Auth
-- ✅ Enter YouTube video URL or ID
-- ✅ Auto-fetch video info (title, channel, stats)
+- ✅ **Videos**: Enter YouTube video URL, process with AI, take notes (`/video`)
+- ✅ **Books**: Upload books via JSON, take chapter notes (`/book`, `/book/add`, `/book/filter`)
+- ✅ **Filter Pages**: Browse and filter videos (`/video/filter`) or books (`/book/filter`)
 - ✅ Create markdown notes with TipTap editor
 - ✅ Auto-save notes to database
 - ✅ Load existing notes automatically
@@ -42,8 +53,9 @@ A full-stack application for creating and managing markdown notes for YouTube vi
 - Python 3.8+
 - Node.js 18+
 - pnpm
-- Supabase account with Email Auth enabled
-- YouTube Data API v3 key
+- 2 Supabase accounts/projects (1 for videos, 1 for books)
+- YouTube Data API v3 key (for videos)
+- OpenAI API key (optional, for AI features)
 
 ### Setup (10 minutes)
 
@@ -96,13 +108,19 @@ VERIFIED_EMAIL_HASHES = [
 4. **Create database tables**
 
 ```bash
-cd backend/db
-python create_table.py
+# Videos database (1st): Execute database_schema.sql in Supabase SQL Editor
+# Books database (2nd): Execute books_schema.sql in Supabase SQL Editor
+
+# Or use existing setup scripts
+cd backend
+python apply_books_schema.py  # Creates book-chapters storage bucket
 ```
+
+See [BOOKS_SETUP.md](BOOKS_SETUP.md) for detailed books database setup.
 
 5. **Enable Supabase Email Auth**
 
-- Go to your Supabase dashboard
+- Go to your Supabase dashboard (1st database - for auth)
 - Navigate to Authentication > Providers
 - Enable Email provider
 - Create user accounts for verified emails
@@ -227,6 +245,15 @@ The `youtube_videos` table stores:
 - Responsive UI with Tailwind CSS
 - shadcn/ui components
 - Protected routes with auth checks
+
+#### Application Routes
+
+- `/` - Login page (root)
+- `/video` - Main video notes editor
+- `/video/filter` - Filter and browse all videos
+- `/video/creator-notes` - View notes by creator/channel
+
+**Note**: All video routes are under `/video/` to allow for future expansion (e.g., `/book/` for book notes).
 
 ## 📚 Usage Examples
 

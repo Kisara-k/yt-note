@@ -2,6 +2,185 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-01-13] - Books Feature Complete ✅
+
+### Added - Book Chunk Editor
+
+A comprehensive chunk/chapter editor interface for managing book chapters.
+
+- **Backend API Endpoints**
+
+  - `PUT /api/book/{book_id}/chapter/{chapter_id}/text` - Update chapter text
+  - `DELETE /api/book/{book_id}/chapter/{chapter_id}` - Delete a chapter
+  - `POST /api/book/{book_id}/chapters/reorder` - Reorder chapters
+
+- **Backend CRUD Functions**
+
+  - `update_chapter_text()` - Update chapter text in storage and DB
+  - `reorder_chapters()` - Reorder chapters with transactional safety
+  - Uses temporary negative IDs to avoid conflicts during reorder
+
+- **Frontend Interface (`/book/chunks?b=book_id`)**
+
+  - Split-view: Chapters list on left, editor on right
+  - **Chapter Management:**
+    - Add new chapters
+    - Edit chapter title and text
+    - Delete chapters with confirmation
+    - Reorder chapters with up/down arrows
+  - **Real-time Operations:**
+    - Load chapter text on-demand from storage
+    - Save changes with instant feedback
+    - Optimistic UI updates for reordering
+  - **Navigation:**
+    - "Edit Chunks" button appears in book-notes-editor after loading a book
+    - Easy access back to main book interface
+
+- **Component: `book-chunk-editor.tsx`**
+  - Full CRUD operations for chapters
+  - Textarea editor for chapter text (500+ line capacity)
+  - Loading states and error handling
+  - Toast notifications for all operations
+
+### Added - Separate Book Prompts for AI Enrichment
+
+Books now use specialized prompts distinct from video prompts for AI enrichment of chapter sections.
+
+- **Book-Specific Prompts**
+
+  - `BOOK_PROMPTS` in `prompts.py` with book-focused language
+  - Field 1: "Chapter Summary" (vs "High-Level Summary" for videos)
+  - Field 2: "Important Concepts" (vs "Key Points" for videos)
+  - Field 3: "Key Insights" (vs "Topics/Themes" for videos)
+  - All prompts reference "book chapter section" instead of "video segment"
+
+- **Backend Updates**
+
+  - `get_all_prompts(content_type)` now accepts 'video' or 'book' parameter
+  - `get_prompt_label(field_name, content_type)` returns appropriate labels
+  - `process_chunks_enrichment_parallel()` accepts `content_type` parameter
+  - `/api/prompts?content_type=book` endpoint returns book-specific prompts
+  - Backward compatible - defaults to 'video' prompts
+
+- **Testing**
+  - `test_book_prompts.py` verifies all 4 prompts differ between video/book
+  - All prompts validated as unique ✅
+
+### Added - Books Feature
+
+A complete books management system mirroring YouTube video functionality using a separate Supabase database.
+
+- **Books Database (2nd Supabase Instance)**
+
+  - Database schema: `books`, `book_chapters`, `book_notes` tables
+  - Storage bucket: `book-chapters` for chapter text files
+  - Full CRUD operations with 50+ functions
+  - Supabase Storage integration
+  - Sample book created: "A Practical Guide to Learning" with 5 chapters
+
+- **Backend Books API (Python/FastAPI)**
+
+  - `backend/db/books_crud.py` - Book metadata CRUD
+  - `backend/db/book_chapters_crud.py` - Chapter CRUD with storage
+  - `backend/db/book_chapters_storage.py` - Storage operations
+  - `backend/db/book_notes_crud.py` - Book notes CRUD
+  - 10+ authenticated API endpoints added to `api.py`
+  - Service key configuration for storage writes
+
+- **Frontend Books Interface (Next.js/React)**
+
+  - Route: `/books?b=book_id` for viewing books
+  - `components/book-notes-editor.tsx` - Main book upload/viewing UI
+  - JSON upload format for chapters (title + text)
+  - Manual metadata entry (title, author, description, tags)
+  - Reused `ChunkViewer` component with `isBook` prop
+  - TipTap markdown editors for notes
+  - Chapter-by-chapter navigation and note-taking
+
+- **Testing & Verification**
+
+  - `test_books.py` - Comprehensive CRUD tests (13 operations)
+  - `create_sample_book.py` - Sample book generator
+  - `verify_book.py` - Database verification script
+  - `sample_book.json` - Example book data format
+  - All tests passing ✅
+
+- **Documentation**
+  - `BOOKS_COMPLETE.md` - Complete implementation summary
+  - `BOOKS_SETUP.md` - Setup instructions
+  - `BOOKS_IMPLEMENTATION.md` - Technical details
+  - `BOOKS_QUICKSTART.md` - Quick start guide
+
+### Fixed - Books Feature
+
+- Storage permission issue: Changed from anon key to service key in all CRUD modules
+- TypeScript warnings in book components (unused variables, empty interfaces)
+- Frontend build errors resolved
+
+### Changed - Books Frontend Structure
+
+- Restructured books routes to mirror video routes exactly:
+  - Changed from `/books?b=id` to `/book?b=id` (singular, like `/video?v=id`)
+  - Added `/book/add` route for uploading new books (separated from viewing)
+  - Added `/book/filter` route for browsing and filtering all books
+- Created three focused components:
+  - `book-notes-editor.tsx` - View and take notes on books (like video-notes-editor)
+  - `book-add.tsx` - Upload new books with JSON chapters
+  - `book-filter.tsx` - Browse, search, filter, and sort books
+- All book routes now have same navigation patterns as video routes
+
+### Technical Details - Books
+
+- Chapter text stored in Supabase Storage (not DB) for efficiency
+- Path pattern: `{book_id}/chapter_{chapter_id}.txt`
+- Service role key required for storage writes (RLS enabled)
+- JWT authentication from 1st database shared across both instances
+
+---
+
+## [Unreleased] - 2025-10-13
+
+### � Added - Books Feature
+
+- **Books Database (2nd Supabase Instance)**
+
+  - New database schema for books, chapters, and notes
+  - Storage bucket for book chapter text
+  - Separate from video database for better organization
+
+- **Backend Books API**
+
+  - Book CRUD operations (`backend/db/books_crud.py`)
+  - Chapter management with storage (`backend/db/book_chapters_crud.py`)
+  - Book notes CRUD (`backend/db/book_notes_crud.py`)
+  - API endpoints for books, chapters, and notes
+
+- **Frontend Books Interface**
+
+  - New `/books` route for book management
+  - Upload books via JSON (chapters with titles and text)
+  - Reuses existing components (ChunkViewer, TiptapMarkdownEditor)
+  - Chapter-by-chapter note taking
+  - Overall book notes
+
+- **Book Management**
+  - User-defined book IDs (e.g., `the_subtle_art`)
+  - Manual metadata entry (title, author, publisher, etc.)
+  - JSON upload for chapter content
+  - URL format: `/books?b=book_id`
+
+### �🔄 Changed - Route Restructuring
+
+- **Frontend Route Organization**
+  - Moved all video-related routes to `/video/` namespace:
+    - `/` now shows only the login page
+    - `/video` - Main video notes editor (formerly `/`)
+    - `/video/filter` - Video filter page (formerly `/filter`)
+    - `/video/creator-notes` - Creator notes page (formerly `/creator-notes`)
+  - Updated all navigation links and router redirects
+  - Authenticated users are now redirected to `/video` from root
+  - Prepared structure for future book-related features
+
 ## [Unreleased] - 2025-10-10
 
 ### 🔐 Added - Authentication & Security

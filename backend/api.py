@@ -42,6 +42,26 @@ from db.subtitle_chunks_crud import (
     load_chunks_text,
     update_chunk_note
 )
+from db.books_crud import (
+    create_book,
+    get_book_by_id,
+    get_all_books
+)
+from db.book_chapters_crud import (
+    create_chapter,
+    get_chapters_by_book,
+    get_chapter_index,
+    get_chapter_details,
+    update_chapter_note,
+    update_chapter_text,
+    delete_chapter,
+    reorder_chapters
+)
+from db.book_notes_crud import (
+    create_or_update_note as create_or_update_book_note,
+    get_note_by_book_id,
+    get_notes_with_book_info
+)
 
 app = FastAPI(title="YouTube Notes API", version="2.0.0")
 
@@ -75,6 +95,30 @@ class NoteRequest(BaseModel):
     video_id: str
     note_content: str
     custom_tags: Optional[List[str]] = None
+
+
+class BookRequest(BaseModel):
+    book_id: str
+    title: str
+    author: Optional[str] = None
+    publisher: Optional[str] = None
+    publication_year: Optional[int] = None
+    isbn: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    chapters: List[Dict[str, str]]  # List of {chapter_title, chapter_text}
+
+
+class BookNoteRequest(BaseModel):
+    book_id: str
+    note_content: str
+    custom_tags: Optional[List[str]] = None
+
+
+class ChapterNoteRequest(BaseModel):
+    book_id: str
+    chapter_id: int
+    note_content: str
 
 
 class VerifyEmailRequest(BaseModel):
@@ -521,20 +565,276 @@ async def get_video_chunk_index_no_auth(video_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/prompts")
-async def get_prompts(current_user: dict = Depends(get_current_user)):
-    """Get prompt configurations"""
+# ============================================================
+# BOOK ENDPOINTS
+# ============================================================
+
+@app.post("/api/book")
+async def create_book_endpoint(request: BookRequest, current_user: dict = Depends(get_current_user)):
+    """Create a new book with chapters from uploaded JSON"""
     try:
-        prompts_dict = get_all_prompts()
+        # Validate chapters have required fields
+        missing_fields = []
+        for idx, chapter_data in enumerate(request.chapters):
+            chapter_num = idx + 1
+            if 'title' not in chapter_data or not chapter_data['title']:
+                missing_fields.append(f"Chapter {chapter_num}: missing 'title'")
+            if 'content' not in chapter_data or not chapter_data['content']:
+                missing_fields.append(f"Chapter {chapter_num}: missing 'content'")
+        
+        if missing_fields:
+            error_msg = "Invalid chapters - " + "; ".join(missing_fields)
+            raise HTTPException(status_code=400, detail=error_msg)
+        
+        # Create book metadata
+        book = create_book(
+            book_id=request.book_id,
+            title=request.title,
+            author=request.author,
+            publisher=request.publisher,
+            publication_year=request.publication_year,
+            isbn=request.isbn,
+            description=request.description,
+            tags=request.tags
+        )
+        
+        if not book:
+            raise HTTPException(status_code=500, detail="Failed to create book")
+        
+        # Create chapters (1-indexed: starting from 1)
+        # Only use 'title' and 'content' fields, ignore any other fields
+        chapter_count = 0
+        for idx, chapter_data in enumerate(request.chapters):
+            chapter = create_chapter(
+                book_id=request.book_id,
+                chapter_id=idx + 1,  # 1-indexed
+                chapter_title=chapter_data['title'],
+                chapter_text=chapter_data['content']
+            )
+            if chapter:
+                chapter_count += 1
+        
+        return {
+            "book_id": request.book_id,
+            "title": request.title,
+            "author": request.author,
+            "chapter_count": chapter_count,
+            "message": "Book created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}")
+async def get_book_endpoint(book_id: str, current_user: dict = Depends(get_current_user)):
+    """Get book metadata by ID"""
+    try:
+        book = get_book_by_id(book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        return book
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/books")
+async def get_books_endpoint(current_user: dict = Depends(get_current_user)):
+    """Get all books"""
+    try:
+        books = get_all_books()
+        return {"books": books, "count": len(books)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}/chapters")
+async def get_book_chapters_endpoint(book_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all chapters for a book (without text)"""
+    try:
+        chapters = get_chapters_by_book(book_id)
+        return {"book_id": book_id, "chapters": chapters, "count": len(chapters)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}/chapters/index")
+async def get_book_chapter_index_endpoint(book_id: str, current_user: dict = Depends(get_current_user)):
+    """Get chapter index (lightweight) for navigation"""
+    try:
+        index = get_chapter_index(book_id)
+        return {"book_id": book_id, "index": index, "count": len(index)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}/chapter/{chapter_id}")
+async def get_chapter_endpoint(book_id: str, chapter_id: int, current_user: dict = Depends(get_current_user)):
+    """Get chapter details with text"""
+    try:
+        chapter = get_chapter_details(book_id, chapter_id)
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        return chapter
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/{book_id}/chapter/{chapter_id}/note")
+async def update_chapter_note_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: ChapterNoteRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update note for a specific chapter"""
+    try:
+        result = update_chapter_note(book_id, chapter_id, request.note_content)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update chapter note")
+        return {"message": "Chapter note updated", "book_id": book_id, "chapter_id": chapter_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/note")
+async def create_or_update_book_note_endpoint(request: BookNoteRequest, current_user: dict = Depends(get_current_user)):
+    """Create or update overall note for a book"""
+    try:
+        result = create_or_update_book_note(
+            book_id=request.book_id,
+            note_content=request.note_content,
+            custom_tags=request.custom_tags
+        )
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to save book note")
+        return {"message": "Book note saved", "book_id": request.book_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}/note")
+async def get_book_note_endpoint(book_id: str, current_user: dict = Depends(get_current_user)):
+    """Get note for a book"""
+    try:
+        note = get_note_by_book_id(book_id)
+        if not note:
+            # Return empty note if not found
+            return {"book_id": book_id, "note_content": None}
+        return note
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/notes/all")
+async def get_all_book_notes_endpoint(current_user: dict = Depends(get_current_user)):
+    """Get all book notes with book info"""
+    try:
+        notes = get_notes_with_book_info()
+        return {"notes": notes, "count": len(notes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/book/{book_id}/chapter/{chapter_id}/text")
+async def update_chapter_text_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update chapter text content"""
+    try:
+        chapter_text = request.get("chapter_text")
+        if chapter_text is None:
+            raise HTTPException(status_code=400, detail="chapter_text is required")
+        
+        updated_chapter = update_chapter_text(book_id, chapter_id, chapter_text)
+        if not updated_chapter:
+            raise HTTPException(status_code=500, detail="Failed to update chapter text")
+        
+        return updated_chapter
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/book/{book_id}/chapter/{chapter_id}")
+async def delete_chapter_endpoint(
+    book_id: str,
+    chapter_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a chapter"""
+    try:
+        success = delete_chapter(book_id, chapter_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete chapter")
+        
+        return {"success": True, "message": f"Chapter {chapter_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/{book_id}/chapters/reorder")
+async def reorder_chapters_endpoint(
+    book_id: str,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reorder chapters for a book"""
+    try:
+        chapter_order = request.get("chapter_order")
+        if not chapter_order or not isinstance(chapter_order, list):
+            raise HTTPException(status_code=400, detail="chapter_order array is required")
+        
+        success = reorder_chapters(book_id, chapter_order)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to reorder chapters")
+        
+        return {"success": True, "message": "Chapters reordered successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/prompts")
+async def get_prompts(content_type: str = 'video', current_user: dict = Depends(get_current_user)):
+    """Get prompt configurations
+    
+    Args:
+        content_type: Either 'video' or 'book' to determine which prompt set to return
+    """
+    try:
+        if content_type not in ['video', 'book']:
+            raise HTTPException(status_code=400, detail="content_type must be 'video' or 'book'")
+        
+        prompts_dict = get_all_prompts(content_type=content_type)
         prompts_list = [
             {
                 'field_name': key,
-                'label': get_prompt_label(key),
+                'label': get_prompt_label(key, content_type=content_type),
                 'template': prompts_dict[key]
             }
             for key in prompts_dict
         ]
-        return {"prompts": prompts_list, "count": len(prompts_list)}
+        return {"prompts": prompts_list, "count": len(prompts_list), "content_type": content_type}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

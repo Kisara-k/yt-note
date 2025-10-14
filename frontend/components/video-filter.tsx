@@ -98,7 +98,8 @@ export function VideoFilter() {
     }
   };
 
-  const parseDuration = (duration: string): number => {
+  const parseDuration = (duration: string | null | undefined): number => {
+    if (!duration) return 0;
     const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!match) return 0;
     const hours = parseInt(match[1] || '0');
@@ -246,7 +247,7 @@ export function VideoFilter() {
         <div className='flex justify-between items-center'>
           <h1 className='text-3xl font-bold'>Filter Videos</h1>
           <div className='flex-1 flex justify-center'>
-            <Link href='/'>
+            <Link href='/video'>
               <Button variant='outline'>Back to Notes</Button>
             </Link>
           </div>
@@ -431,7 +432,7 @@ export function VideoFilter() {
                     <TableRow key={video.id} className='h-12'>
                       <TableCell className='font-medium py-2'>
                         <Link
-                          href={`/?v=${video.id}`}
+                          href={`/video?v=${video.id}`}
                           className='line-clamp-2 hover:underline text-primary'
                         >
                           {video.title}

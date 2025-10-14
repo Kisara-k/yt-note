@@ -103,10 +103,10 @@ def process_video_subtitles(video_id: str) -> Optional[List[Dict[str, Any]]]:
 
 def process_chunk_enrichment(chunk_text: str) -> Dict[str, str]:
     """
-    Enrich a single chunk with AI
+    Enrich a single chunk with AI (for videos)
     Returns: dict with title, field_1, field_2, field_3
     """
-    prompts = get_all_prompts()
+    prompts = get_all_prompts(content_type='video')
     
     result = enrich_chunk(
         text=chunk_text,
@@ -120,12 +120,17 @@ def process_chunk_enrichment(chunk_text: str) -> Dict[str, str]:
     return result
 
 
-def process_chunks_enrichment_parallel(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def process_chunks_enrichment_parallel(chunks: List[Dict[str, Any]], content_type: str = 'video') -> List[Dict[str, Any]]:
     """
     Enrich multiple chunks in parallel
+    
+    Args:
+        chunks: List of chunks to enrich
+        content_type: Either 'video' or 'book' to determine which prompts to use
+    
     Returns: list of enriched chunks
     """
-    prompts = get_all_prompts()
+    prompts = get_all_prompts(content_type=content_type)
     
     enriched = enrich_chunks_parallel(
         chunks=chunks,
@@ -172,11 +177,11 @@ def process_video_subtitles_only(video_id: str) -> Dict[str, Any]:
         # Step 3: Save to database in ONE BULK OPERATION (not a loop)
         print("[3/3] Saving all chunks to database (bulk operation)...", flush=True)
         
-        # Prepare chunks for bulk insert
+        # Prepare chunks for bulk insert (1-indexed)
         chunks_for_db = [
             {
                 'video_id': video_id,
-                'chunk_id': i,
+                'chunk_id': i + 1,  # 1-indexed: starts from 1
                 'chunk_text': chunk['text'],
                 'short_title': None,
                 'ai_field_1': None,
@@ -258,10 +263,10 @@ def process_ai_enrichment_only(video_id: str) -> bool:
         # Sending only AI fields in N updates is more efficient than fetching + re-uploading chunk_text
         print("[3/3] Updating database with AI fields (targeted updates)...", flush=True)
         
-        # Prepare enriched data with chunk_ids for bulk update
+        # Prepare enriched data with chunk_ids for bulk update (1-indexed)
         enriched_with_ids = [
             {
-                'chunk_id': i,
+                'chunk_id': i + 1,  # 1-indexed: starts from 1
                 'title': enriched.get('title', ''),
                 'field_1': enriched.get('field_1', ''),
                 'field_2': enriched.get('field_2', ''),
