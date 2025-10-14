@@ -6,98 +6,110 @@ All prompt templates and related functions
 from config import OPENAI_MAX_TOKENS_TITLE, OPENAI_MAX_TOKENS_OTHER
 
 
-# AI Prompts for video chunk enrichment
-VIDEO_PROMPTS = {
-    'short_title': {
-        'label': 'Short Title',
-        'max_tokens': OPENAI_MAX_TOKENS_TITLE,
-        'template': '''Create a concise title (max 10 words) that captures the main topic of this video segment.
+# ============================================================
+# VIDEO PROMPTS - Raw Text Templates
+# ============================================================
+
+VIDEO_PROMPT_TITLE = '''Create a concise title (max 10 words) that captures the main topic of this video segment.
 
 Segment text:
 {chunk_text}
 
 Generate only the title, no additional text.'''
-    },
-    
-    'ai_field_1': {
-        'label': 'High-Level Summary',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''Provide a high-level summary (2-3 sentences) of this video segment.
+
+VIDEO_PROMPT_1 = '''Provide a high-level summary (2-3 sentences) of this video segment.
 
 Segment text:
 {chunk_text}
 
 Focus on the main ideas and key takeaways.'''
-    },
-    
-    'ai_field_2': {
-        'label': 'Key Points',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''List the key points discussed in this video segment as bullet points.
+
+VIDEO_PROMPT_2 = '''List the key points discussed in this video segment as bullet points.
 
 Segment text:
 {chunk_text}
 
 Provide 3-5 bullet points, each focusing on a distinct idea or fact mentioned.'''
-    },
-    
-    'ai_field_3': {
-        'label': 'Topics/Themes',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''Identify the main topics or themes covered in this video segment.
+
+VIDEO_PROMPT_3 = '''Identify the main topics or themes covered in this video segment.
 
 Segment text:
 {chunk_text}
 
 Provide a comma-separated list of 3-5 topics or themes.'''
-    }
-}
 
 
-# AI Prompts for book chapter enrichment
-BOOK_PROMPTS = {
-    'short_title': {
-        'label': 'Short Title',
-        'max_tokens': OPENAI_MAX_TOKENS_TITLE,
-        'template': '''Create a concise title (max 10 words) that captures the main topic of this book chapter section.
+# ============================================================
+# BOOK PROMPTS - Raw Text Templates
+# ============================================================
+# Note: No BOOK_PROMPT_TITLE - it's not saved to DB (chapter_title already exists)
 
-Chapter section:
-{chunk_text}
-
-Generate only the title, no additional text.'''
-    },
-    
-    'ai_field_1': {
-        'label': 'Chapter Summary',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''Provide a comprehensive summary (2-3 sentences) of this book chapter section.
+BOOK_PROMPT_1 = '''Provide a comprehensive summary (2-3 sentences) of this book chapter section.
 
 Chapter section:
 {chunk_text}
 
 Focus on the main concepts, arguments, or narrative developments presented.'''
-    },
-    
-    'ai_field_2': {
-        'label': 'Important Concepts',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''Identify and explain the important concepts, definitions, or ideas in this book chapter section.
+
+BOOK_PROMPT_2 = '''Identify and explain the important concepts, definitions, or ideas in this book chapter section.
 
 Chapter section:
 {chunk_text}
 
 List 3-5 key concepts as bullet points, with brief explanations where relevant.'''
-    },
-    
-    'ai_field_3': {
-        'label': 'Key Insights',
-        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
-        'template': '''Extract the key insights, lessons, or takeaways from this book chapter section.
+
+BOOK_PROMPT_3 = '''Extract the key insights, lessons, or takeaways from this book chapter section.
 
 Chapter section:
 {chunk_text}
 
 Provide 3-5 actionable insights or important lessons that a reader should remember.'''
+
+
+# ============================================================
+# Structured Prompt Configurations
+# ============================================================
+
+# AI Prompts for video chunk enrichment
+VIDEO_PROMPTS = {
+    'short_title': {
+        'label': 'Short Title',
+        'max_tokens': OPENAI_MAX_TOKENS_TITLE,
+        'template': VIDEO_PROMPT_TITLE
+    },
+    'ai_field_1': {
+        'label': 'High-Level Summary',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': VIDEO_PROMPT_1
+    },
+    'ai_field_2': {
+        'label': 'Key Points',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': VIDEO_PROMPT_2
+    },
+    'ai_field_3': {
+        'label': 'Topics/Themes',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': VIDEO_PROMPT_3
+    }
+}
+
+# AI Prompts for book chapter enrichment
+BOOK_PROMPTS = {
+    'ai_field_1': {
+        'label': 'Chapter Summary',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': BOOK_PROMPT_1
+    },
+    'ai_field_2': {
+        'label': 'Important Concepts',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': BOOK_PROMPT_2
+    },
+    'ai_field_3': {
+        'label': 'Key Insights',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': BOOK_PROMPT_3
     }
 }
 
@@ -128,16 +140,21 @@ def get_all_prompts(content_type: str = 'video') -> dict:
         content_type: Either 'video' or 'book' to determine which prompt set to use
     
     Returns:
-        Dict with keys: title, field_1, field_2, field_3
+        Dict with keys: title (video only), field_1, field_2, field_3
     """
     prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
     
-    return {
-        'title': prompts['short_title']['template'],
+    result = {
         'field_1': prompts['ai_field_1']['template'],
         'field_2': prompts['ai_field_2']['template'],
         'field_3': prompts['ai_field_3']['template']
     }
+    
+    # Only include title for videos (books don't save it)
+    if content_type == 'video' and 'short_title' in prompts:
+        result['title'] = prompts['short_title']['template']
+    
+    return result
 
 
 def get_prompt_label(field_name: str, content_type: str = 'video') -> str:
