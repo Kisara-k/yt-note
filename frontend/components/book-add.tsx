@@ -41,9 +41,47 @@ export function BookAdd() {
         }
       } catch (err) {
         throw new Error(
-          'Invalid JSON format. Expected array of {chapter_title, chapter_text}'
+          'Invalid JSON format. Expected array of {title, content}'
         );
       }
+
+      // Validate chapters have required fields
+      const missingFields = [];
+      for (let i = 0; i < chaptersData.length; i++) {
+        const chapter = chaptersData[i];
+        const chapterNum = i + 1;
+
+        if (
+          !chapter.title ||
+          typeof chapter.title !== 'string' ||
+          !chapter.title.trim()
+        ) {
+          missingFields.push(`Chapter ${chapterNum}: missing or empty 'title'`);
+        }
+        if (
+          !chapter.content ||
+          typeof chapter.content !== 'string' ||
+          !chapter.content.trim()
+        ) {
+          missingFields.push(
+            `Chapter ${chapterNum}: missing or empty 'content'`
+          );
+        }
+      }
+
+      if (missingFields.length > 0) {
+        throw new Error(
+          `Invalid chapters:\n${missingFields.join(
+            '\n'
+          )}\n\nEach chapter must have 'title' and 'content' fields.`
+        );
+      }
+
+      // Only pass title and content fields, ignore any other fields
+      const validatedChapters = chaptersData.map((ch) => ({
+        title: ch.title,
+        content: ch.content,
+      }));
 
       const response = await fetch('http://localhost:8000/api/book', {
         method: 'POST',
@@ -56,7 +94,7 @@ export function BookAdd() {
           title: title,
           author: author || null,
           description: description || null,
-          chapters: chaptersData,
+          chapters: validatedChapters,
         }),
       });
 
@@ -165,7 +203,7 @@ export function BookAdd() {
               <Textarea
                 id='chapters'
                 placeholder={
-                  '[\n  {\n    "chapter_title": "Chapter 1: Title",\n    "chapter_text": "Chapter content here..."\n  }\n]'
+                  '[\n  {\n    "title": "Chapter 1: Introduction",\n    "content": "Chapter content here..."\n  },\n  {\n    "title": "Chapter 2: Getting Started",\n    "content": "More content..."\n  }\n]'
                 }
                 value={chaptersJson}
                 onChange={(e) => setChaptersJson(e.target.value)}
@@ -174,7 +212,8 @@ export function BookAdd() {
                 className='font-mono text-sm'
               />
               <p className='text-sm text-muted-foreground'>
-                JSON array with chapter_title and chapter_text for each chapter
+                JSON array with &quot;title&quot; and &quot;content&quot; for
+                each chapter. Any other fields will be ignored.
               </p>
             </div>
 

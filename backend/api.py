@@ -573,6 +573,19 @@ async def get_video_chunk_index_no_auth(video_id: str):
 async def create_book_endpoint(request: BookRequest, current_user: dict = Depends(get_current_user)):
     """Create a new book with chapters from uploaded JSON"""
     try:
+        # Validate chapters have required fields
+        missing_fields = []
+        for idx, chapter_data in enumerate(request.chapters):
+            chapter_num = idx + 1
+            if 'title' not in chapter_data or not chapter_data['title']:
+                missing_fields.append(f"Chapter {chapter_num}: missing 'title'")
+            if 'content' not in chapter_data or not chapter_data['content']:
+                missing_fields.append(f"Chapter {chapter_num}: missing 'content'")
+        
+        if missing_fields:
+            error_msg = "Invalid chapters - " + "; ".join(missing_fields)
+            raise HTTPException(status_code=400, detail=error_msg)
+        
         # Create book metadata
         book = create_book(
             book_id=request.book_id,
@@ -589,13 +602,14 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
             raise HTTPException(status_code=500, detail="Failed to create book")
         
         # Create chapters (1-indexed: starting from 1)
+        # Only use 'title' and 'content' fields, ignore any other fields
         chapter_count = 0
         for idx, chapter_data in enumerate(request.chapters):
             chapter = create_chapter(
                 book_id=request.book_id,
                 chapter_id=idx + 1,  # 1-indexed
-                chapter_title=chapter_data.get('chapter_title', f'Chapter {idx + 1}'),
-                chapter_text=chapter_data.get('chapter_text', '')
+                chapter_title=chapter_data['title'],
+                chapter_text=chapter_data['content']
             )
             if chapter:
                 chapter_count += 1
