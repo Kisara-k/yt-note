@@ -164,11 +164,12 @@ ALTER TABLE subtitle_chunks
     ON DELETE CASCADE;
 
 -- video_notes references youtube_videos
+-- Note: ON DELETE NO ACTION - notes persist even if video is deleted
 ALTER TABLE video_notes
     ADD CONSTRAINT fk_video
     FOREIGN KEY (video_id)
     REFERENCES youtube_videos(id)
-    ON DELETE CASCADE;
+    ON DELETE NO ACTION;
 
 -- ============================================================
 -- TRIGGERS: Auto-update timestamps
@@ -191,6 +192,39 @@ CREATE TRIGGER update_video_notes_updated_at
     BEFORE UPDATE ON video_notes
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- STORAGE CLEANUP TRIGGERS
+-- ============================================================
+-- Note: Actual storage deletion is handled by backend via Supabase Storage API
+-- These triggers are for documentation and audit purposes
+
+CREATE OR REPLACE FUNCTION delete_video_storage()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Video % deleted - storage cleanup handled by backend', OLD.id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_video_delete
+    BEFORE DELETE ON youtube_videos
+    FOR EACH ROW
+    EXECUTE FUNCTION delete_video_storage();
+
+CREATE OR REPLACE FUNCTION delete_chunk_storage()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Chunk %/% deleted - storage cleanup handled by backend', 
+        OLD.video_id, OLD.chunk_id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_chunk_delete
+    BEFORE DELETE ON subtitle_chunks
+    FOR EACH ROW
+    EXECUTE FUNCTION delete_chunk_storage();
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS) - For Supabase compatibility

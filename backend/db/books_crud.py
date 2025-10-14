@@ -188,7 +188,9 @@ def update_book(
 
 def delete_book(book_id: str) -> bool:
     """
-    Delete a book (cascade deletes chapters and notes)
+    Delete a book (cascades to chapters, but NOT book_notes)
+    Deletes storage files first, then DB record
+    Note: book_notes are NOT deleted (preserved as orphaned records)
     
     Args:
         book_id: Book identifier
@@ -197,9 +199,19 @@ def delete_book(book_id: str) -> bool:
         True if deleted, False otherwise
     """
     try:
+        # Import here to avoid circular dependency
+        from .book_chapters_storage import delete_book_chapters_from_storage
+        
+        # Step 1: Delete all chapter files from storage
+        print(f"[DELETE] Step 1: Deleting storage for book {book_id}")
+        delete_book_chapters_from_storage(book_id)
+        
+        # Step 2: Delete book from DB (cascades to book_chapters, but NOT book_notes)
+        print(f"[DELETE] Step 2: Deleting book record {book_id}")
         print(f"[DB->] DELETE books WHERE id={book_id}")
         response = supabase.table("books").delete().eq("id", book_id).execute()
-        print(f"[DB<-] Deleted book {book_id}")
+        
+        print(f"[DB<-] Deleted book {book_id} (book_notes preserved if they exist)")
         return True
         
     except Exception as e:

@@ -100,7 +100,8 @@ CREATE TABLE book_notes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    -- Note: ON DELETE NO ACTION - notes persist even if book is deleted
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE NO ACTION
 );
 
 -- Trigger for auto-updating updated_at
@@ -110,3 +111,36 @@ CREATE TRIGGER update_book_notes_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE book_notes IS 'Stores user notes for books';
+
+-- ============================================================
+-- STORAGE CLEANUP TRIGGERS
+-- ============================================================
+-- Note: Actual storage deletion is handled by backend via Supabase Storage API
+-- These triggers are for documentation and audit purposes
+
+CREATE OR REPLACE FUNCTION delete_book_storage()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Book % deleted - storage cleanup handled by backend', OLD.id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_book_delete
+    BEFORE DELETE ON books
+    FOR EACH ROW
+    EXECUTE FUNCTION delete_book_storage();
+
+CREATE OR REPLACE FUNCTION delete_chapter_storage()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Chapter %/% deleted - storage cleanup handled by backend', 
+        OLD.book_id, OLD.chapter_id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_chapter_delete
+    BEFORE DELETE ON book_chapters
+    FOR EACH ROW
+    EXECUTE FUNCTION delete_chapter_storage();

@@ -250,6 +250,8 @@ def search_videos_by_tags(tags: List[str]) -> Optional[List[Dict[str, Any]]]:
 def delete_video(video_id: str) -> bool:
     """
     Delete a video by its ID
+    Deletes storage files first, then DB record (which cascades to chunks)
+    Note: video_notes are NOT deleted (preserved as orphaned records)
     
     Args:
         video_id: YouTube video ID
@@ -258,8 +260,18 @@ def delete_video(video_id: str) -> bool:
         True if deleted successfully, False otherwise
     """
     try:
+        # Import here to avoid circular dependency
+        from .subtitle_chunks_storage import delete_video_chunks_from_storage
+        
+        # Step 1: Delete all chunk files from storage
+        print(f"[DELETE] Step 1: Deleting storage for video {video_id}")
+        delete_video_chunks_from_storage(video_id)
+        
+        # Step 2: Delete video from DB (cascades to subtitle_chunks, but NOT video_notes)
+        print(f"[DELETE] Step 2: Deleting video record {video_id}")
         response = supabase.table("youtube_videos").delete().eq("id", video_id).execute()
-        print(f"✅ Deleted video: {video_id}")
+        
+        print(f"✅ Deleted video: {video_id} (video_notes preserved if they exist)")
         return True
         
     except Exception as e:
