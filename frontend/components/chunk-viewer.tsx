@@ -14,6 +14,7 @@ import { Loader2, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
+import { NoteEditor } from '@/components/note-editor';
 import { API_BASE_URL } from '@/lib/config';
 import { AIFieldDisplay } from '@/components/ai-field-display';
 
@@ -548,52 +549,29 @@ export function ChunkViewer({
           />
         </div>
 
-        <Card>
-          <CardHeader className='p-3 pb-2'>
-            <div className='flex items-center justify-between'>
-              <CardTitle className='text-sm'>
-                {isBook ? 'Chapter' : 'Chunk'} Notes{' '}
-                {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
-              </CardTitle>
-              <Button
-                size='sm'
-                onClick={saveChunkNote}
-                disabled={
-                  isSavingNote || !hasUnsavedChanges || loading || loadingChunks
-                }
-                variant='default'
-              >
-                {isSavingNote ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className='mr-2 h-4 w-4' />
-                    Save Note
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className='p-3'>
-            {loading || loadingChunks ? (
-              <div className='flex items-center justify-center py-8'>
+        {loading || loadingChunks ? (
+          <Card>
+            <CardContent className='p-12'>
+              <div className='flex items-center justify-center'>
                 <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
               </div>
-            ) : (
-              <TiptapMarkdownEditor
-                value={noteContent}
-                onChange={handleEditorChange}
-                placeholder={`Add your notes for this ${
-                  isBook ? 'chapter' : 'chunk'
-                }...`}
-                onInitialLoad={handleInitialLoad}
-              />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <NoteEditor
+            title={`${isBook ? 'Chapter' : 'Chunk'} Notes`}
+            value={noteContent}
+            onChange={handleEditorChange}
+            onSave={saveChunkNote}
+            onInitialLoad={handleInitialLoad}
+            isSaving={isSavingNote}
+            hasUnsavedChanges={hasUnsavedChanges}
+            placeholder={`Add your notes for this ${
+              isBook ? 'chapter' : 'chunk'
+            }...`}
+            disabled={loading || loadingChunks}
+          />
+        )}
       </div>
     </div>
   );

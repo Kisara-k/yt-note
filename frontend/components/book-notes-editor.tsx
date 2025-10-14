@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
+import { NoteEditor } from '@/components/note-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -423,45 +424,16 @@ export function BookNotesEditor() {
 
         {bookInfo && (
           <div className='mb-6'>
-            <Card>
-              <CardHeader className='p-3 pb-2'>
-                <div className='flex items-center justify-between'>
-                  <CardTitle className='text-sm'>
-                    Note{' '}
-                    {hasUnsavedChanges && (
-                      <span className='text-amber-500'>*</span>
-                    )}
-                  </CardTitle>
-                  <Button
-                    onClick={handleSaveNote}
-                    disabled={saving || !hasUnsavedChanges}
-                    variant='default'
-                    size='sm'
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className='mr-2 h-4 w-4' />
-                        Save Note
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className='p-3'>
-                <TiptapMarkdownEditor
-                  value={noteContent}
-                  onChange={handleEditorChange}
-                  className='min-h-[150px]'
-                  placeholder='Start writing your notes here...'
-                  onInitialLoad={handleInitialLoad}
-                />
-              </CardContent>
-            </Card>
+            <NoteEditor
+              title='Note'
+              value={noteContent}
+              onChange={handleEditorChange}
+              onSave={handleSaveNote}
+              onInitialLoad={handleInitialLoad}
+              isSaving={saving}
+              hasUnsavedChanges={hasUnsavedChanges}
+              placeholder='Start writing your notes here...'
+            />
           </div>
         )}
 
