@@ -392,35 +392,24 @@ export function ChunkViewer({
     setHasUnsavedChanges(false);
   }, []);
 
-  if (loadingChunks) {
-    return (
-      <div className='flex items-center justify-center p-8'>
-        <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
-      </div>
-    );
-  }
-
-  if (chunkIndex.length === 0) {
-    return (
-      <Card>
-        <CardContent className='p-6 text-center text-muted-foreground'>
-          {isBook
-            ? 'No chapters available for this book.'
-            : 'No chunks available for this video. Process the video to generate chunks.'}
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className='space-y-4'>
       <div className='flex items-center gap-2'>
         <Select
           value={selectedChunkId?.toString()}
           onValueChange={(value) => setSelectedChunkId(parseInt(value))}
+          disabled={loadingChunks || chunkIndex.length === 0}
         >
           <SelectTrigger className='w-full'>
-            <SelectValue placeholder='Select a chunk' />
+            <SelectValue
+              placeholder={
+                loadingChunks
+                  ? 'Loading...'
+                  : chunkIndex.length === 0
+                  ? 'No chunks available'
+                  : 'Select a chunk'
+              }
+            />
           </SelectTrigger>
           <SelectContent>
             {chunkIndex.map((chunk) => (
@@ -433,116 +422,112 @@ export function ChunkViewer({
             ))}
           </SelectContent>
         </Select>
-        {chunkDetails && (
-          <Button
-            size='sm'
-            onClick={handleProcessChapterAI}
-            disabled={processingChapter}
-            variant='outline'
-            className='whitespace-nowrap'
-          >
-            {processingChapter ? (
-              <>
-                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className='mr-2 h-4 w-4' />
-                AI Process
-              </>
-            )}
-          </Button>
-        )}
+        <Button
+          size='sm'
+          onClick={handleProcessChapterAI}
+          disabled={processingChapter || !chunkDetails || loadingChunks}
+          variant='outline'
+          className='whitespace-nowrap'
+        >
+          {processingChapter ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Sparkles className='mr-2 h-4 w-4' />
+              AI Process
+            </>
+          )}
+        </Button>
       </div>
 
-      {chunkDetails || loading ? (
-        <div className='space-y-4'>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <AIFieldDisplay
-              title='Summary'
-              content={chunkDetails?.ai_field_1}
-              height='h-48'
-              onRegenerate={() => handleRegenerateField('field_1')}
-              isRegenerating={regeneratingField === 'field_1'}
-              isLoading={loading}
-            />
+      <div className='space-y-4'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <AIFieldDisplay
+            title='Summary'
+            content={chunkDetails?.ai_field_1}
+            height='h-48'
+            onRegenerate={() => handleRegenerateField('field_1')}
+            isRegenerating={regeneratingField === 'field_1'}
+            isLoading={loading || loadingChunks}
+          />
 
-            <AIFieldDisplay
-              title='Key Points'
-              content={chunkDetails?.ai_field_2}
-              height='h-48'
-              onRegenerate={() => handleRegenerateField('field_2')}
-              isRegenerating={regeneratingField === 'field_2'}
-              isLoading={loading}
-            />
+          <AIFieldDisplay
+            title='Key Points'
+            content={chunkDetails?.ai_field_2}
+            height='h-48'
+            onRegenerate={() => handleRegenerateField('field_2')}
+            isRegenerating={regeneratingField === 'field_2'}
+            isLoading={loading || loadingChunks}
+          />
 
-            <AIFieldDisplay
-              title='Topics'
-              content={chunkDetails?.ai_field_3}
-              height='h-48'
-              onRegenerate={() => handleRegenerateField('field_3')}
-              isRegenerating={regeneratingField === 'field_3'}
-              isLoading={loading}
-            />
+          <AIFieldDisplay
+            title='Topics'
+            content={chunkDetails?.ai_field_3}
+            height='h-48'
+            onRegenerate={() => handleRegenerateField('field_3')}
+            isRegenerating={regeneratingField === 'field_3'}
+            isLoading={loading || loadingChunks}
+          />
 
-            <AIFieldDisplay
-              title={isBook ? 'Chapter Text' : 'Chunk Text'}
-              content={chunkDetails?.chunk_text}
-              height='h-48'
-              isLoading={loading}
-              useMarkdown={false}
-            />
-          </div>
-
-          <Card>
-            <CardHeader className='p-3 pb-2'>
-              <div className='flex items-center justify-between'>
-                <CardTitle className='text-sm'>
-                  {isBook ? 'Chapter' : 'Chunk'} Notes{' '}
-                  {hasUnsavedChanges && (
-                    <span className='text-amber-500'>*</span>
-                  )}
-                </CardTitle>
-                <Button
-                  size='sm'
-                  onClick={saveChunkNote}
-                  disabled={isSavingNote || !hasUnsavedChanges || loading}
-                  variant='default'
-                >
-                  {isSavingNote ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className='mr-2 h-4 w-4' />
-                      Save Note
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className='p-3'>
-              {loading ? (
-                <div className='flex items-center justify-center py-8'>
-                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
-                </div>
-              ) : (
-                <TiptapMarkdownEditor
-                  value={noteContent}
-                  onChange={handleEditorChange}
-                  placeholder={`Add your notes for this ${
-                    isBook ? 'chapter' : 'chunk'
-                  }...`}
-                  onInitialLoad={handleInitialLoad}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <AIFieldDisplay
+            title={isBook ? 'Chapter Text' : 'Chunk Text'}
+            content={chunkDetails?.chunk_text}
+            height='h-48'
+            isLoading={loading || loadingChunks}
+            useMarkdown={false}
+          />
         </div>
-      ) : null}
+
+        <Card>
+          <CardHeader className='p-3 pb-2'>
+            <div className='flex items-center justify-between'>
+              <CardTitle className='text-sm'>
+                {isBook ? 'Chapter' : 'Chunk'} Notes{' '}
+                {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
+              </CardTitle>
+              <Button
+                size='sm'
+                onClick={saveChunkNote}
+                disabled={
+                  isSavingNote || !hasUnsavedChanges || loading || loadingChunks
+                }
+                variant='default'
+              >
+                {isSavingNote ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className='mr-2 h-4 w-4' />
+                    Save Note
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className='p-3'>
+            {loading || loadingChunks ? (
+              <div className='flex items-center justify-center py-8'>
+                <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+              </div>
+            ) : (
+              <TiptapMarkdownEditor
+                value={noteContent}
+                onChange={handleEditorChange}
+                placeholder={`Add your notes for this ${
+                  isBook ? 'chapter' : 'chunk'
+                }...`}
+                onInitialLoad={handleInitialLoad}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
