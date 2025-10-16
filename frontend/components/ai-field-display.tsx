@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,26 @@ export function AIFieldDisplay({
   const [originalContent, setOriginalContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = isEditing && editedContent !== originalContent;
+
+  // Handle Ctrl+S to save changes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (isEditing && hasUnsavedChanges && !isSaving && onUpdate) {
+          handleSaveEdit();
+        }
+      }
+    };
+
+    if (isEditing) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isEditing, hasUnsavedChanges, isSaving, editedContent, originalContent]);
+
   const handleEditClick = () => {
     setOriginalContent(content || '');
     setEditedContent(content || '');
@@ -68,7 +88,10 @@ export function AIFieldDisplay({
     <Card className='flex flex-col'>
       <CardHeader className='px-3 pt-1.5 pb-1.5 pr-1.5 shrink-0'>
         <div className='flex items-center justify-between gap-2'>
-          <CardTitle className='text-sm'>{title}</CardTitle>
+          <CardTitle className='text-sm'>
+            {title}
+            {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
+          </CardTitle>
           <div className='flex items-center gap-1 shrink-0'>
             {onUpdate && !isEditing && (
               <Button
@@ -98,7 +121,7 @@ export function AIFieldDisplay({
                   size='sm'
                   variant='ghost'
                   onClick={handleSaveEdit}
-                  disabled={isSaving || editedContent === originalContent}
+                  disabled={isSaving || !hasUnsavedChanges}
                   className={`h-5 w-5 p-0 ${BUTTON_OPACITY_CLASS}`}
                   title='Save changes'
                 >

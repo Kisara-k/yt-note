@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
@@ -30,6 +31,21 @@ export function NoteEditor({
   minHeight = 'min-h-[150px]',
   disabled = false,
 }: NoteEditorProps) {
+  // Handle Ctrl+S to save the note
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (!isSaving && hasUnsavedChanges && !disabled) {
+          onSave();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSave, isSaving, hasUnsavedChanges, disabled]);
+
   return (
     <Card>
       <CardHeader className='px-3 pt-1.5 pb-1.5'>
