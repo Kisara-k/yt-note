@@ -461,7 +461,7 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
     
     try:
         # Step 1: Get all chapters from database
-        print("[1/3] Loading chapters from database...", flush=True)
+        print("[1/4] Loading chapters from database...", flush=True)
         chapters = get_chapters_by_book(book_id)
         
         if not chapters:
@@ -471,12 +471,12 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
         print(f"Found {len(chapters)} chapters\n", flush=True)
         
         # Step 2: Load chapter text from storage
-        print("[2/3] Loading chapter text from storage...", flush=True)
+        print("[2/4] Loading chapter text from storage...", flush=True)
         chapters = load_chapters_text(chapters)
         print(f"Loaded text for {len(chapters)} chapters\n", flush=True)
         
         # Step 3: Enrich all chapters with AI (parallel)
-        print("[3/3] Enriching chapters with AI (parallel)...", flush=True)
+        print("[3/4] Enriching chapters with AI (parallel)...", flush=True)
         
         # Get book prompts
         from prompts import get_all_prompts
@@ -538,13 +538,111 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
         return False
 
 
-def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
+def process_video_all_chunks_ai_enrichment(video_id: str) -> bool:
+    """
+    Enrich all chunks of a video with AI-generated fields (parallel processing)
+    
+    Args:
+        video_id: Video identifier
+        
+    Returns:
+        True if all chunks processed successfully
+    """
+    import sys
+    
+    print(f"\n{'='*70}", flush=True)
+    print(f"AI Enrichment for all chunks of video: {video_id}", flush=True)
+    print(f"{'='*70}\n", flush=True)
+    
+    try:
+        # Step 1: Get all chunks from database
+        print("[1/4] Loading chunks from database...", flush=True)
+        from db.subtitle_chunks_crud import get_chunks_by_video, load_chunks_text
+        chunks = get_chunks_by_video(video_id)
+        
+        if not chunks:
+            print("No chunks found for this video.", flush=True)
+            return False
+        
+        print(f"Found {len(chunks)} chunks\n", flush=True)
+        
+        # Step 2: Load chunk text from storage
+        print("[2/4] Loading chunk text from storage...", flush=True)
+        chunks = load_chunks_text(chunks)
+        print(f"Loaded text for {len(chunks)} chunks\n", flush=True)
+        
+        # Step 3: Enrich all chunks with AI (parallel)
+        print("[3/4] Enriching chunks with AI (parallel)...", flush=True)
+        
+        # Get video prompts
+        from prompts import get_all_prompts
+        prompts = get_all_prompts(content_type='video')
+        
+        # Prepare chunks for enrichment
+        chunks_for_enrichment = []
+        for chunk in chunks:
+            if chunk.get('chunk_text'):
+                chunks_for_enrichment.append({
+                    'text': chunk['chunk_text'],
+                    'chunk_id': chunk['chunk_id'],
+                    'video_id': chunk['video_id']
+                })
+        
+        if not chunks_for_enrichment:
+            print("No chunks with text to enrich", flush=True)
+            return False
+        
+        # Enrich chunks in parallel
+        enriched_chunks = enrich_chunks_parallel(
+            chunks=chunks_for_enrichment,
+            prompts=prompts,
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
+            max_tokens_other=OPENAI_MAX_TOKENS_OTHER,
+            max_workers=3
+        )
+        
+        print(f"\nAI enrichment complete for {len(enriched_chunks)} chunks", flush=True)
+        
+        # Step 4: Update all chunks in database
+        print("\n[4/4] Saving AI fields to database...", flush=True)
+        
+        success_count = 0
+        for enriched in enriched_chunks:
+            updated = update_chunk_ai_fields(
+                video_id=enriched['video_id'],
+                chunk_id=enriched['chunk_id'],
+                short_title=enriched.get('title'),
+                ai_field_1=enriched.get('field_1'),
+                ai_field_2=enriched.get('field_2'),
+                ai_field_3=enriched.get('field_3')
+            )
+            if updated:
+                success_count += 1
+        
+        print(f"Successfully updated {success_count}/{len(enriched_chunks)} chunks", flush=True)
+        print(f"\n{'='*70}", flush=True)
+        print("Video AI enrichment complete!", flush=True)
+        print(f"{'='*70}\n", flush=True)
+        
+        return success_count == len(enriched_chunks)
+        
+    except Exception as e:
+        print(f"Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int, chunk_text: Optional[str] = None) -> bool:
     """
     Enrich a single video chunk with AI-generated fields
     
     Args:
         video_id: Video identifier
         chunk_id: Chunk identifier
+        chunk_text: Optional chunk text (if not provided, will load from database)
         
     Returns:
         True if successful
@@ -556,20 +654,26 @@ def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
     print(f"{'='*70}\n", flush=True)
     
     try:
-        # Step 1: Get chunk from database
-        print("[1/3] Loading chunk from database...", flush=True)
-        from db.subtitle_chunks_crud import get_chunk_details
-        chunk = get_chunk_details(video_id, chunk_id)
-        
-        if not chunk:
-            print(f"Chunk not found: {video_id} / {chunk_id}", flush=True)
-            return False
-        
-        if not chunk.get('chunk_text'):
-            print(f"No chunk text found", flush=True)
-            return False
+        # Step 1: Get chunk text
+        if chunk_text and chunk_text.strip():
+            print("[1/3] Using provided chunk text (no database load needed)...", flush=True)
+            text_to_enrich = chunk_text
+            print(f"Using provided text ({len(text_to_enrich)} characters)\n", flush=True)
+        else:
+            print("[1/3] Loading chunk from database...", flush=True)
+            from db.subtitle_chunks_crud import get_chunk_details
+            chunk = get_chunk_details(video_id, chunk_id)
             
-        print(f"Found chunk {chunk_id}\n", flush=True)
+            if not chunk:
+                print(f"Chunk not found: {video_id} / {chunk_id}", flush=True)
+                return False
+            
+            if not chunk.get('chunk_text'):
+                print(f"No chunk text found", flush=True)
+                return False
+                
+            print(f"Found chunk {chunk_id}\n", flush=True)
+            text_to_enrich = chunk['chunk_text']
         
         # Step 2: Enrich with AI
         print("[2/3] Enriching chunk with AI...", flush=True)
@@ -580,7 +684,7 @@ def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
         
         # Enrich the chunk
         ai_fields = enrich_chunk(
-            text=chunk['chunk_text'],
+            text=text_to_enrich,
             prompts=prompts,
             model=OPENAI_MODEL,
             temperature=OPENAI_TEMPERATURE,
@@ -622,7 +726,8 @@ def process_video_chunk_ai_enrichment(video_id: str, chunk_id: int) -> bool:
 def regenerate_video_chunk_ai_field(
     video_id: str,
     chunk_id: int,
-    field_name: str
+    field_name: str,
+    chunk_text: Optional[str] = None
 ) -> dict:
     """
     Regenerate a single AI field for a video chunk
@@ -631,20 +736,28 @@ def regenerate_video_chunk_ai_field(
         video_id: Video identifier
         chunk_id: Chunk identifier
         field_name: Field to regenerate ('title', 'field_1', 'field_2', 'field_3')
+        chunk_text: Optional chunk text to use (avoids database/storage load)
         
     Returns:
         Dict with the regenerated field value or error
     """
     try:
-        # Step 1: Get chunk from database
-        from db.subtitle_chunks_crud import get_chunk_details
-        chunk = get_chunk_details(video_id, chunk_id)
-        
-        if not chunk:
-            return {'error': 'Chunk not found'}
-        
-        if not chunk.get('chunk_text'):
-            return {'error': 'No chunk text found'}
+        # Step 1: Get chunk text
+        if chunk_text and chunk_text.strip():
+            print("[1/4] Using provided chunk text (no database load needed)...")
+            text_to_enrich = chunk_text
+        else:
+            print("[1/4] Loading chunk from database...")
+            from db.subtitle_chunks_crud import get_chunk_details
+            chunk = get_chunk_details(video_id, chunk_id)
+            
+            if not chunk:
+                return {'error': 'Chunk not found'}
+            
+            if not chunk.get('chunk_text'):
+                return {'error': 'No chunk text found'}
+            
+            text_to_enrich = chunk['chunk_text']
         
         # Step 2: Get prompts with only the requested field
         from prompts import get_all_prompts
@@ -658,15 +771,19 @@ def regenerate_video_chunk_ai_field(
             'field_3': all_prompts.get('field_3', '') if field_name == 'field_3' else ''
         }
         
+        print(f"[2/4] Regenerating field '{field_name}' with AI...")
+        
         # Step 3: Enrich with AI (only the selected field)
         ai_fields = enrich_chunk(
-            text=chunk['chunk_text'],
+            text=text_to_enrich,
             prompts=selective_prompts,
             model=OPENAI_MODEL,
             temperature=OPENAI_TEMPERATURE,
             max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
             max_tokens_other=OPENAI_MAX_TOKENS_OTHER
         )
+        
+        print(f"[3/4] Field regenerated successfully")
         
         # Step 4: Update database with only the regenerated field
         from db.subtitle_chunks_crud import update_chunk_ai_fields
@@ -684,6 +801,8 @@ def regenerate_video_chunk_ai_field(
         if not update_data:
             return {'error': 'Invalid field name'}
         
+        print(f"[4/4] Saving regenerated field to database...")
+        
         updated = update_chunk_ai_fields(
             video_id=video_id,
             chunk_id=chunk_id,
@@ -699,6 +818,7 @@ def regenerate_video_chunk_ai_field(
                 'field_3': 'ai_field_3'
             }
             db_field = field_map.get(field_name)
+            print(f"Field regeneration complete!")
             return {
                 'success': True,
                 'field': field_name,

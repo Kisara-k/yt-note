@@ -281,6 +281,34 @@ def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
         return []
 
 
+def get_chunk_metadata(video_id: str, chunk_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Get chunk metadata only (no text loading from storage)
+    Lightweight query for verification and titles
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        
+    Returns:
+        Chunk metadata without chunk_text
+    """
+    try:
+        print(f"[DB->] SELECT chunk metadata WHERE video_id={video_id} AND chunk_id={chunk_id}")
+        response = supabase.table("subtitle_chunks").select("*").eq("video_id", video_id).eq("chunk_id", chunk_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"[DB<-] Found chunk {chunk_id} metadata")
+            return response.data[0]
+        else:
+            print(f"[DB<-] Chunk not found")
+            return None
+
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
 def get_chunk_details(video_id: str, chunk_id: int, include_text: bool = True) -> Optional[Dict[str, Any]]:
     """
     Get detailed information for a specific chunk

@@ -117,7 +117,8 @@ export function ChunkViewer({
 
       setChunkIndex(mappedIndex);
 
-      if (mappedIndex.length > 0) {
+      // Only set selectedChunkId if not already set (initial load)
+      if (mappedIndex.length > 0 && selectedChunkId === null) {
         setSelectedChunkId(mappedIndex[0].chunk_id);
       }
     } catch (error) {
@@ -126,7 +127,7 @@ export function ChunkViewer({
     } finally {
       setLoadingChunks(false);
     }
-  }, [resourceId, isBook, getAccessToken]);
+  }, [resourceId, isBook, getAccessToken, selectedChunkId]); // Added selectedChunkId to dependencies
 
   const loadChunkDetails = useCallback(
     async (chunkId: number) => {
@@ -194,24 +195,25 @@ export function ChunkViewer({
     if (resourceId) {
       loadChunkIndex();
     }
-  }, [resourceId, loadChunkIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceId]); // Only re-run when resourceId changes, not when loadChunkIndex changes
 
   useEffect(() => {
     if (selectedChunkId !== null) {
       loadChunkDetails(selectedChunkId);
     }
-  }, [selectedChunkId, loadChunkDetails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChunkId]); // Only re-run when selectedChunkId changes, not when loadChunkDetails changes
 
-  // Refresh AI fields when refreshAIFields prop changes (books only for now)
+  // Refresh AI fields when refreshAIFields prop changes (both books and videos)
   useEffect(() => {
     const refreshAIFieldsOnly = async () => {
       if (
-        isBook &&
         selectedChunkId !== null &&
         refreshAIFields > 0 &&
         chunkDetails !== null
       ) {
-        const aiFields = await loadChunkAIFields(selectedChunkId);
+        const aiFields = await loadCompleteAIFields(selectedChunkId);
         if (aiFields) {
           setChunkDetails((prev) =>
             prev
@@ -224,6 +226,9 @@ export function ChunkViewer({
                 }
               : prev
           );
+          // Reload chunk index to update titles in the dropdown
+          // This is now safe because we fixed the useEffect dependencies to prevent cascade
+          loadChunkIndex();
         }
       }
     };
@@ -296,42 +301,10 @@ export function ChunkViewer({
       const token = await getAccessToken();
       if (!token) return null;
 
-      // For books, use the lightweight chapters endpoint to avoid storage download
-      if (isBook) {
-        const response = await fetch(
-          `${API_BASE_URL}/api/book/${resourceId}/chapters`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          console.error('Failed to load AI fields, status:', response.status);
-          return null;
-        }
-
-        const data = await response.json();
-        const chapter = data.chapters?.find(
-          (ch: any) => ch.chapter_id === chunkId
-        );
-
-        if (!chapter) {
-          console.error('Chapter not found in chapters list');
-          return null;
-        }
-
-        return {
-          short_title: chapter.chapter_title,
-          ai_field_1: chapter.ai_field_1 || '',
-          ai_field_2: chapter.ai_field_2 || '',
-          ai_field_3: chapter.ai_field_3 || '',
-        };
-      }
-
-      // For videos, use the existing endpoint
-      const endpoint = `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}`;
+      // Use lightweight AI status endpoint for both books and videos (for polling)
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapters/ai-status?chapter_id=${chunkId}`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/ai-status?chunk_id=${chunkId}`;
 
       const response = await fetch(endpoint, {
         headers: {
@@ -345,14 +318,63 @@ export function ChunkViewer({
       }
 
       const data = await response.json();
+
       return {
-        short_title: data.short_title,
+        short_title: isBook ? data.chapter_title : data.short_title,
         ai_field_1: data.ai_field_1 || '',
-        ai_field_2: data.ai_field_2 || '',
-        ai_field_3: data.ai_field_3 || '',
+        ai_field_2: '', // Not returned by lightweight endpoint
+        ai_field_3: '', // Not returned by lightweight endpoint
       };
     } catch (error) {
       console.error('Error loading AI fields:', error);
+      return null;
+    }
+  };
+
+  const loadCompleteAIFields = async (chunkId: number) => {
+    if (!resourceId) return null;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) return null;
+
+      // Load complete AI fields after enrichment is detected
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapters`
+        : `${API_BASE_URL}/api/chunks/${resourceId}`;
+
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error(
+          'Failed to load complete AI fields, status:',
+          response.status
+        );
+        return null;
+      }
+
+      const data = await response.json();
+      const item = isBook
+        ? data.chapters?.find((ch: any) => ch.chapter_id === chunkId)
+        : data.chunks?.find((ch: any) => ch.chunk_id === chunkId);
+
+      if (!item) {
+        console.error('Item not found in list');
+        return null;
+      }
+
+      return {
+        short_title: isBook ? item.chapter_title : item.short_title,
+        ai_field_1: item.ai_field_1 || '',
+        ai_field_2: item.ai_field_2 || '',
+        ai_field_3: item.ai_field_3 || '',
+      };
+    } catch (error) {
+      console.error('Error loading complete AI fields:', error);
       return null;
     }
   };
@@ -396,6 +418,7 @@ export function ChunkViewer({
         : {
             video_id: resourceId,
             chunk_id: chunkDetails.chunk_id,
+            chunk_text: chunkDetails.chunk_text, // Pass chunk text to avoid backend loading
           };
 
       const response = await fetch(endpoint, {
@@ -444,21 +467,34 @@ export function ChunkViewer({
           currentAIState
         );
 
+        // Check flag again after async operation completes (prevent race condition)
+        if (enrichmentComplete) return;
+
         if (newAIFields) {
           enrichmentComplete = true; // Set flag immediately
           clearInterval(pollInterval);
-          // Update only the AI fields, not the entire chunk
+
+          // Load complete AI fields (all fields, not just title and field_1)
+          const completeAIFields = await loadCompleteAIFields(
+            chunkDetails.chunk_id
+          );
+
+          // Update with complete AI fields
           setChunkDetails((prev) =>
             prev
               ? {
                   ...prev,
-                  short_title: newAIFields.short_title || prev.short_title,
-                  ai_field_1: newAIFields.ai_field_1,
-                  ai_field_2: newAIFields.ai_field_2,
-                  ai_field_3: newAIFields.ai_field_3,
+                  short_title:
+                    completeAIFields?.short_title || prev.short_title,
+                  ai_field_1: completeAIFields?.ai_field_1 || '',
+                  ai_field_2: completeAIFields?.ai_field_2 || '',
+                  ai_field_3: completeAIFields?.ai_field_3 || '',
                 }
               : prev
           );
+          // Reload chunk index to update titles in the dropdown
+          // This is now safe because we fixed the useEffect dependencies to prevent cascade
+          loadChunkIndex();
           setProcessingChapter(false);
           toast.success(
             `${isBook ? 'Chapter' : 'Chunk'} AI enrichment complete!`
@@ -512,6 +548,7 @@ export function ChunkViewer({
             video_id: resourceId,
             chunk_id: chunkDetails.chunk_id,
             field_name: fieldName,
+            chunk_text: chunkDetails.chunk_text, // Pass chunk text to avoid backend loading
           };
 
       const response = await fetch(endpoint, {

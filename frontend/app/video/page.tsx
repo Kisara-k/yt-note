@@ -1,6 +1,6 @@
 'use client';
 
-import { VideoNotesEditor } from '@/components/video-notes-editor';
+import { ContentNotesEditor } from '@/components/content-notes-editor';
 import { useAuth } from '@/lib/auth-context';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -28,5 +28,5 @@ export default function VideoPage() {
     return null;
   }
 
-  return <VideoNotesEditor />;
+  return <ContentNotesEditor contentType='video' />;
 }

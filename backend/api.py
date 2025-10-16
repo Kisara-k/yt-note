@@ -26,7 +26,8 @@ from orchestrator import (
     process_ai_enrichment_only,
     process_book_chapter_ai_enrichment,
     process_book_all_chapters_ai_enrichment,
-    process_video_chunk_ai_enrichment
+    process_video_chunk_ai_enrichment,
+    process_video_all_chunks_ai_enrichment
 )
 
 # Import from auth and db directly
@@ -135,9 +136,14 @@ class BookAIRequest(BaseModel):
     book_id: str
 
 
+class VideoAIRequest(BaseModel):
+    video_id: str
+
+
 class VideoChunkAIRequest(BaseModel):
     video_id: str
     chunk_id: int
+    chunk_text: Optional[str] = None  # Optional: provide to avoid database load
 
 
 class RegenerateAIFieldRequest(BaseModel):
@@ -147,6 +153,7 @@ class RegenerateAIFieldRequest(BaseModel):
     chapter_id: Optional[int] = None
     field_name: str  # 'title', 'field_1', 'field_2', or 'field_3' (books don't have 'title')
     chapter_text: Optional[str] = None  # Optional chapter text to avoid storage download
+    chunk_text: Optional[str] = None  # Optional chunk text to avoid storage download (for videos)
 
 
 class VerifyEmailRequest(BaseModel):
@@ -335,6 +342,51 @@ async def get_video_chunk_index(video_id: str, current_user: dict = Depends(get_
     try:
         index = get_chunk_index(video_id)
         return {"video_id": video_id, "index": index, "count": len(index)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chunks/{video_id}/ai-status")
+async def get_chunk_ai_status(video_id: str, chunk_id: Optional[int] = None, current_user: dict = Depends(get_current_user)):
+    """
+    Lightweight endpoint to check AI enrichment status
+    Returns only minimal data for polling checks
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Optional specific chunk to check (if None, checks all chunks)
+    
+    Returns:
+        For single chunk: {chunk_id, short_title, ai_field_1} (~50-100 bytes)
+        For all chunks: {chunks: [{chunk_id, short_title, ai_field_1}]} (~50-100 bytes per chunk)
+    """
+    try:
+        from db.subtitle_chunks_crud import get_chunks_by_video
+        chunks = get_chunks_by_video(video_id)
+        
+        if chunk_id is not None:
+            # Single chunk check
+            chunk = next((c for c in chunks if c.get('chunk_id') == chunk_id), None)
+            if not chunk:
+                raise HTTPException(status_code=404, detail="Chunk not found")
+            return {
+                "chunk_id": chunk.get('chunk_id'),
+                "short_title": chunk.get('short_title', ''),
+                "ai_field_1": chunk.get('ai_field_1', '')
+            }
+        else:
+            # All chunks check - return minimal data
+            minimal_chunks = [
+                {
+                    "chunk_id": c.get('chunk_id'),
+                    "short_title": c.get('short_title', ''),
+                    "ai_field_1": c.get('ai_field_1', '')
+                }
+                for c in chunks
+            ]
+            return {"video_id": video_id, "chunks": minimal_chunks, "count": len(minimal_chunks)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -545,11 +597,12 @@ async def process_video_chunk_ai_endpoint(
 ):
     """Process AI enrichment for a single video chunk (background)"""
     try:
-        # Verify chunk exists
-        from db.subtitle_chunks_crud import get_chunk_details
-        chunk = get_chunk_details(request.video_id, request.chunk_id)
-        if not chunk:
-            raise HTTPException(status_code=404, detail="Chunk not found")
+        # If chunk_text not provided, verify chunk exists (metadata only, no storage load)
+        if not request.chunk_text:
+            from db.subtitle_chunks_crud import get_chunk_metadata
+            chunk = get_chunk_metadata(request.video_id, request.chunk_id)
+            if not chunk:
+                raise HTTPException(status_code=404, detail="Chunk not found")
         
         # Process in background
         def background_task():
@@ -559,7 +612,11 @@ async def process_video_chunk_ai_endpoint(
             except:
                 pass
             try:
-                process_video_chunk_ai_enrichment(request.video_id, request.chunk_id)
+                process_video_chunk_ai_enrichment(
+                    request.video_id,
+                    request.chunk_id,
+                    request.chunk_text
+                )
             except Exception as e:
                 print(f"Background error: {e}", flush=True)
                 import traceback
@@ -572,6 +629,54 @@ async def process_video_chunk_ai_endpoint(
             "message": "Chunk AI enrichment started",
             "video_id": request.video_id,
             "chunk_id": request.chunk_id,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/process-video-all-chunks-ai")
+async def process_video_all_chunks_ai_endpoint(
+    request: VideoAIRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process AI enrichment for all chunks of a video (background)"""
+    try:
+        # Verify video exists
+        video = get_video_by_id(request.video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        # Check if video has chunks
+        from db.subtitle_chunks_crud import get_chunks_by_video
+        chunks = get_chunks_by_video(request.video_id)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="No chunks found for this video")
+        
+        # Process in background
+        def background_task():
+            import sys
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except:
+                pass
+            try:
+                process_video_all_chunks_ai_enrichment(request.video_id)
+            except Exception as e:
+                print(f"Background error: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        thread = threading.Thread(target=background_task, daemon=True)
+        thread.start()
+        
+        return {
+            "message": f"AI enrichment started for {len(chunks)} chunks",
+            "video_id": request.video_id,
+            "chunk_count": len(chunks),
             "status": "processing"
         }
         
@@ -603,7 +708,8 @@ async def regenerate_ai_field_endpoint(
         result = regenerate_video_chunk_ai_field(
             video_id=video_id,
             chunk_id=chunk_id,
-            field_name=request.field_name
+            field_name=request.field_name,
+            chunk_text=request.chunk_text
         )
         
         if 'error' in result:
@@ -856,6 +962,51 @@ async def get_book_chapter_index_endpoint(book_id: str, current_user: dict = Dep
     try:
         index = get_chapter_index(book_id)
         return {"book_id": book_id, "index": index, "count": len(index)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/book/{book_id}/chapters/ai-status")
+async def get_chapter_ai_status(book_id: str, chapter_id: Optional[int] = None, current_user: dict = Depends(get_current_user)):
+    """
+    Lightweight endpoint to check AI enrichment status for chapters
+    Returns only minimal data for polling checks
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Optional specific chapter to check (if None, checks all chapters)
+    
+    Returns:
+        For single chapter: {chapter_id, chapter_title, ai_field_1} (~50-100 bytes)
+        For all chapters: {chapters: [{chapter_id, chapter_title, ai_field_1}]} (~50-100 bytes per chapter)
+    """
+    try:
+        from db.book_chapters_crud import get_chapters_by_book
+        chapters = get_chapters_by_book(book_id)
+        
+        if chapter_id is not None:
+            # Single chapter check
+            chapter = next((c for c in chapters if c.get('chapter_id') == chapter_id), None)
+            if not chapter:
+                raise HTTPException(status_code=404, detail="Chapter not found")
+            return {
+                "chapter_id": chapter.get('chapter_id'),
+                "chapter_title": chapter.get('chapter_title', ''),
+                "ai_field_1": chapter.get('ai_field_1', '')
+            }
+        else:
+            # All chapters check - return minimal data
+            minimal_chapters = [
+                {
+                    "chapter_id": c.get('chapter_id'),
+                    "chapter_title": c.get('chapter_title', ''),
+                    "ai_field_1": c.get('ai_field_1', '')
+                }
+                for c in chapters
+            ]
+            return {"book_id": book_id, "chapters": minimal_chapters, "count": len(minimal_chapters)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

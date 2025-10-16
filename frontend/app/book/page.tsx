@@ -1,6 +1,6 @@
 'use client';
 
-import { BookNotesEditor } from '@/components/book-notes-editor';
+import { ContentNotesEditor } from '@/components/content-notes-editor';
 import { useAuth } from '@/lib/auth-context';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -28,5 +28,5 @@ export default function BookPage() {
     return null;
   }
 
-  return <BookNotesEditor />;
+  return <ContentNotesEditor contentType='book' />;
 }
