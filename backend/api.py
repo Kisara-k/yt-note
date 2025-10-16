@@ -128,6 +128,7 @@ class ChapterNoteRequest(BaseModel):
 class BookChapterAIRequest(BaseModel):
     book_id: str
     chapter_id: int
+    chapter_text: Optional[str] = None  # Optional: provide to avoid database load
 
 
 class BookAIRequest(BaseModel):
@@ -145,6 +146,7 @@ class RegenerateAIFieldRequest(BaseModel):
     book_id: Optional[str] = None
     chapter_id: Optional[int] = None
     field_name: str  # 'title', 'field_1', 'field_2', or 'field_3' (books don't have 'title')
+    chapter_text: Optional[str] = None  # Optional chapter text to avoid storage download
 
 
 class VerifyEmailRequest(BaseModel):
@@ -1005,11 +1007,12 @@ async def process_book_chapter_ai_endpoint(
 ):
     """Process AI enrichment for a single book chapter (background)"""
     try:
-        # Verify book and chapter exist
-        from db.book_chapters_crud import get_chapter_details
-        chapter = get_chapter_details(request.book_id, request.chapter_id)
-        if not chapter:
-            raise HTTPException(status_code=404, detail="Chapter not found")
+        # If chapter_text not provided, verify chapter exists (metadata only, no storage load)
+        if not request.chapter_text:
+            from db.book_chapters_crud import get_chapter_metadata
+            chapter = get_chapter_metadata(request.book_id, request.chapter_id)
+            if not chapter:
+                raise HTTPException(status_code=404, detail="Chapter not found")
         
         # Process in background
         def background_task():
@@ -1019,7 +1022,11 @@ async def process_book_chapter_ai_endpoint(
             except:
                 pass
             try:
-                process_book_chapter_ai_enrichment(request.book_id, request.chapter_id)
+                process_book_chapter_ai_enrichment(
+                    request.book_id,
+                    request.chapter_id,
+                    request.chapter_text
+                )
             except Exception as e:
                 print(f"Background error: {e}", flush=True)
                 import traceback
@@ -1063,7 +1070,8 @@ async def regenerate_book_chapter_ai_field_endpoint(
         result = regenerate_book_chapter_ai_field(
             book_id=book_id,
             chapter_id=chapter_id,
-            field_name=request.field_name
+            field_name=request.field_name,
+            chapter_text=request.chapter_text
         )
         
         if 'error' in result:

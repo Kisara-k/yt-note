@@ -356,13 +356,14 @@ def process_multiple_videos_parallel(video_ids: List[str], max_workers: int = 3)
 
 # ==================== BOOK PROCESSING FUNCTIONS ====================
 
-def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int) -> bool:
+def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int, chapter_text: Optional[str] = None) -> bool:
     """
     Enrich a single book chapter with AI-generated fields
     
     Args:
         book_id: Book identifier
         chapter_id: Chapter identifier
+        chapter_text: Optional chapter text (if not provided, will load from database)
         
     Returns:
         True if successful
@@ -374,20 +375,26 @@ def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int) -> bool:
     print(f"{'='*70}\n", flush=True)
     
     try:
-        # Step 1: Get chapter from database
-        print("[1/3] Loading chapter from database...", flush=True)
-        from db.book_chapters_crud import get_chapter_details
-        chapter = get_chapter_details(book_id, chapter_id)
-        
-        if not chapter:
-            print(f"Chapter not found: {book_id} / {chapter_id}", flush=True)
-            return False
-        
-        if not chapter.get('chapter_text'):
-            print(f"No chapter text found", flush=True)
-            return False
+        # Step 1: Get chapter text
+        if chapter_text and chapter_text.strip():
+            print("[1/3] Using provided chapter text (no database load needed)...", flush=True)
+            text_to_enrich = chapter_text
+            print(f"Using provided text ({len(text_to_enrich)} characters)\n", flush=True)
+        else:
+            print("[1/3] Loading chapter from database...", flush=True)
+            from db.book_chapters_crud import get_chapter_details
+            chapter = get_chapter_details(book_id, chapter_id)
             
-        print(f"Found chapter: {chapter.get('chapter_title', 'Untitled')}\n", flush=True)
+            if not chapter:
+                print(f"Chapter not found: {book_id} / {chapter_id}", flush=True)
+                return False
+            
+            if not chapter.get('chapter_text'):
+                print(f"No chapter text found", flush=True)
+                return False
+                
+            print(f"Found chapter: {chapter.get('chapter_title', 'Untitled')}\n", flush=True)
+            text_to_enrich = chapter['chapter_text']
         
         # Step 2: Enrich with AI
         print("[2/3] Enriching chapter with AI...", flush=True)
@@ -398,7 +405,7 @@ def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int) -> bool:
         
         # Enrich the chapter
         ai_fields = enrich_chunk(
-            text=chapter['chapter_text'],
+            text=text_to_enrich,
             prompts=prompts,
             model=OPENAI_MODEL,
             temperature=OPENAI_TEMPERATURE,
@@ -709,7 +716,8 @@ def regenerate_video_chunk_ai_field(
 def regenerate_book_chapter_ai_field(
     book_id: str,
     chapter_id: int,
-    field_name: str
+    field_name: str,
+    chapter_text: Optional[str] = None
 ) -> dict:
     """
     Regenerate a single AI field for a book chapter
@@ -718,20 +726,28 @@ def regenerate_book_chapter_ai_field(
         book_id: Book identifier
         chapter_id: Chapter identifier
         field_name: Field to regenerate ('field_1', 'field_2', 'field_3')
+        chapter_text: Optional chapter text to use (avoids database/storage load)
         
     Returns:
         Dict with the regenerated field value or error
     """
     try:
-        # Step 1: Get chapter from database
-        from db.book_chapters_crud import get_chapter_details
-        chapter = get_chapter_details(book_id, chapter_id)
-        
-        if not chapter:
-            return {'error': 'Chapter not found'}
-        
-        if not chapter.get('chapter_text'):
-            return {'error': 'No chapter text found'}
+        # Step 1: Get chapter text
+        if chapter_text and chapter_text.strip():
+            print("[1/4] Using provided chapter text (no database load needed)...")
+            text_to_enrich = chapter_text
+        else:
+            print("[1/4] Loading chapter from database...")
+            from db.book_chapters_crud import get_chapter_details
+            chapter = get_chapter_details(book_id, chapter_id)
+            
+            if not chapter:
+                return {'error': 'Chapter not found'}
+            
+            if not chapter.get('chapter_text'):
+                return {'error': 'No chapter text found'}
+            
+            text_to_enrich = chapter['chapter_text']
         
         # Step 2: Get prompts with only the requested field
         from prompts import get_all_prompts
@@ -745,15 +761,19 @@ def regenerate_book_chapter_ai_field(
             'field_3': all_prompts.get('field_3', '') if field_name == 'field_3' else ''
         }
         
+        print(f"[2/4] Regenerating field '{field_name}' with AI...")
+        
         # Step 3: Enrich with AI (only the selected field)
         ai_fields = enrich_chunk(
-            text=chapter['chapter_text'],
+            text=text_to_enrich,
             prompts=selective_prompts,
             model=OPENAI_MODEL,
             temperature=OPENAI_TEMPERATURE,
             max_tokens_title=OPENAI_MAX_TOKENS_TITLE,
             max_tokens_other=OPENAI_MAX_TOKENS_OTHER
         )
+        
+        print(f"[3/4] Field regenerated successfully")
         
         # Step 4: Update database with only the regenerated field
         from db.book_chapters_crud import update_chapter_ai_fields
@@ -770,6 +790,8 @@ def regenerate_book_chapter_ai_field(
         if not update_data:
             return {'error': 'Invalid field name'}
         
+        print(f"[4/4] Saving regenerated field to database...")
+        
         updated = update_chapter_ai_fields(
             book_id=book_id,
             chapter_id=chapter_id,
@@ -784,6 +806,7 @@ def regenerate_book_chapter_ai_field(
                 'field_3': 'ai_field_3'
             }
             db_field = field_map.get(field_name)
+            print(f"Field regeneration complete!")
             return {
                 'success': True,
                 'field': field_name,

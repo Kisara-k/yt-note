@@ -45,12 +45,14 @@ interface ChunkViewerProps {
   videoId?: string;
   bookId?: string;
   isBook?: boolean;
+  refreshAIFields?: number; // Increment this to trigger AI field refresh
 }
 
 export function ChunkViewer({
   videoId,
   bookId,
   isBook = false,
+  refreshAIFields = 0,
 }: ChunkViewerProps) {
   const [chunkIndex, setChunkIndex] = useState<ChunkIndex[]>([]);
   const [selectedChunkId, setSelectedChunkId] = useState<number | null>(null);
@@ -200,6 +202,35 @@ export function ChunkViewer({
     }
   }, [selectedChunkId, loadChunkDetails]);
 
+  // Refresh AI fields when refreshAIFields prop changes (books only for now)
+  useEffect(() => {
+    const refreshAIFieldsOnly = async () => {
+      if (
+        isBook &&
+        selectedChunkId !== null &&
+        refreshAIFields > 0 &&
+        chunkDetails !== null
+      ) {
+        const aiFields = await loadChunkAIFields(selectedChunkId);
+        if (aiFields) {
+          setChunkDetails((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  short_title: aiFields.short_title || prev.short_title,
+                  ai_field_1: aiFields.ai_field_1,
+                  ai_field_2: aiFields.ai_field_2,
+                  ai_field_3: aiFields.ai_field_3,
+                }
+              : prev
+          );
+        }
+      }
+    };
+    refreshAIFieldsOnly();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshAIFields]); // Only trigger when refreshAIFields changes, not selectedChunkId
+
   const saveChunkNote = async () => {
     if (!chunkDetails || !resourceId) return;
 
@@ -258,6 +289,89 @@ export function ChunkViewer({
     [chunkDetails, initialLoadedContent]
   );
 
+  const loadChunkAIFields = async (chunkId: number) => {
+    if (!resourceId) return null;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) return null;
+
+      // For books, use the lightweight chapters endpoint to avoid storage download
+      if (isBook) {
+        const response = await fetch(
+          `${API_BASE_URL}/api/book/${resourceId}/chapters`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error('Failed to load AI fields, status:', response.status);
+          return null;
+        }
+
+        const data = await response.json();
+        const chapter = data.chapters?.find(
+          (ch: any) => ch.chapter_id === chunkId
+        );
+
+        if (!chapter) {
+          console.error('Chapter not found in chapters list');
+          return null;
+        }
+
+        return {
+          short_title: chapter.chapter_title,
+          ai_field_1: chapter.ai_field_1 || '',
+          ai_field_2: chapter.ai_field_2 || '',
+          ai_field_3: chapter.ai_field_3 || '',
+        };
+      }
+
+      // For videos, use the existing endpoint
+      const endpoint = `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}`;
+
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to load AI fields, status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      return {
+        short_title: data.short_title,
+        ai_field_1: data.ai_field_1 || '',
+        ai_field_2: data.ai_field_2 || '',
+        ai_field_3: data.ai_field_3 || '',
+      };
+    } catch (error) {
+      console.error('Error loading AI fields:', error);
+      return null;
+    }
+  };
+
+  const checkChunkAIEnrichment = async (
+    chunkId: number,
+    previousData: { short_title?: string; ai_field_1?: string }
+  ) => {
+    const aiFields = await loadChunkAIFields(chunkId);
+    if (!aiFields) return false;
+
+    // Check if the AI fields have changed from the previous state
+    const hasNewData =
+      aiFields.short_title !== previousData.short_title ||
+      aiFields.ai_field_1 !== previousData.ai_field_1;
+
+    return hasNewData ? aiFields : false;
+  };
+
   const handleProcessChapterAI = async () => {
     if (!chunkDetails) return;
 
@@ -277,6 +391,7 @@ export function ChunkViewer({
         ? {
             book_id: resourceId,
             chapter_id: chunkDetails.chunk_id,
+            chapter_text: chunkDetails.chunk_text, // Pass chapter text to avoid backend loading
           }
         : {
             video_id: resourceId,
@@ -308,11 +423,60 @@ export function ChunkViewer({
         result
       );
 
-      // Wait a bit then reload the chapter/chunk to see updates
-      setTimeout(async () => {
-        await loadChunkDetails(chunkDetails.chunk_id);
-        setProcessingChapter(false);
-      }, 5000);
+      // Store the current AI fields to compare against
+      const currentAIState = {
+        short_title: isBook
+          ? chunkDetails.short_title
+          : chunkDetails.short_title,
+        ai_field_1: chunkDetails.ai_field_1,
+      };
+
+      // Poll to check if AI enrichment is complete (both books and videos)
+      let pollCount = 0;
+      const maxPolls = 180; // 3 minutes (180 * 1 second)
+      let enrichmentComplete = false; // Flag to prevent duplicate processing
+      const pollInterval = setInterval(async () => {
+        if (enrichmentComplete) return; // Skip if already completed
+
+        pollCount++;
+        const newAIFields = await checkChunkAIEnrichment(
+          chunkDetails.chunk_id,
+          currentAIState
+        );
+
+        if (newAIFields) {
+          enrichmentComplete = true; // Set flag immediately
+          clearInterval(pollInterval);
+          // Update only the AI fields, not the entire chunk
+          setChunkDetails((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  short_title: newAIFields.short_title || prev.short_title,
+                  ai_field_1: newAIFields.ai_field_1,
+                  ai_field_2: newAIFields.ai_field_2,
+                  ai_field_3: newAIFields.ai_field_3,
+                }
+              : prev
+          );
+          setProcessingChapter(false);
+          toast.success(
+            `${isBook ? 'Chapter' : 'Chunk'} AI enrichment complete!`
+          );
+          console.log(
+            `${isBook ? 'Chapter' : 'Chunk'} AI enrichment complete!`
+          );
+        } else if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          setProcessingChapter(false);
+          toast.info(
+            'AI enrichment is taking longer than expected. Manually refresh to see updates.'
+          );
+          console.log(
+            'AI enrichment timeout - manually refresh to see updates'
+          );
+        }
+      }, 1000);
     } catch (error) {
       console.error('AI enrichment error:', error);
       toast.error(
@@ -342,6 +506,7 @@ export function ChunkViewer({
             book_id: resourceId,
             chapter_id: chunkDetails.chunk_id,
             field_name: fieldName,
+            chapter_text: chunkDetails.chunk_text, // Pass chapter text to avoid backend loading
           }
         : {
             video_id: resourceId,

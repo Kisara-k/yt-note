@@ -55,6 +55,7 @@ export function BookNotesEditor() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [processingAllChapters, setProcessingAllChapters] = useState(false);
   const chunkViewerKey = useRef(0);
+  const [refreshAIFields, setRefreshAIFields] = useState(0);
   const hasLoadedInitial = useRef(false);
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
@@ -217,6 +218,71 @@ export function BookNotesEditor() {
     setHasUnsavedChanges(false);
   }, []);
 
+  const loadAllChaptersAIFields = async (book_id: string) => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return null;
+
+      const response = await fetch(
+        `http://localhost:8000/api/book/${book_id}/chapters`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.chapters && data.chapters.length > 0) {
+          // Return a map of chapter_id to AI fields for comparison
+          return data.chapters.map((chapter: any) => ({
+            chapter_id: chapter.chapter_id,
+            chapter_title: chapter.chapter_title || '',
+            ai_field_1: chapter.ai_field_1 || '',
+          }));
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error loading chapter AI fields:', error);
+      return null;
+    }
+  };
+
+  const checkChapterAIEnrichment = async (
+    book_id: string,
+    previousData?: Array<{
+      chapter_id: number;
+      chapter_title: string;
+      ai_field_1: string;
+    }>
+  ) => {
+    const currentData = await loadAllChaptersAIFields(book_id);
+    if (!currentData || currentData.length === 0) return false;
+
+    // If no previous data provided, just check if any chapter has AI fields
+    if (!previousData) {
+      return currentData.some(
+        (chapter: any) => chapter.chapter_title || chapter.ai_field_1
+      );
+    }
+
+    // Compare with previous data to detect new enrichment
+    const hasNewData = currentData.some((current: any) => {
+      const previous = previousData.find(
+        (p) => p.chapter_id === current.chapter_id
+      );
+      if (!previous) return false;
+      return (
+        current.chapter_title !== previous.chapter_title ||
+        current.ai_field_1 !== previous.ai_field_1
+      );
+    });
+
+    return hasNewData;
+  };
+
   const handleProcessAllChapters = async () => {
     if (!bookInfo) return;
 
@@ -247,28 +313,32 @@ export function BookNotesEditor() {
       const result = await response.json();
       console.log('AI enrichment started for all chapters:', result);
 
+      // Store current AI state before enrichment
+      const currentAIState = await loadAllChaptersAIFields(bookInfo.id);
+
       // Poll to check if AI enrichment is complete
       let pollCount = 0;
-      const maxPolls = 60; // 3 minutes (60 * 3 seconds)
+      const maxPolls = 180; // 3 minutes (180 * 1 second)
       const pollInterval = setInterval(async () => {
         pollCount++;
+        const hasAIEnrichment = await checkChapterAIEnrichment(
+          bookInfo.id,
+          currentAIState || undefined
+        );
 
-        // Refresh the chapter viewer to check for updates
-        chunkViewerKey.current += 1;
-
-        if (pollCount >= maxPolls) {
+        if (hasAIEnrichment) {
+          clearInterval(pollInterval);
+          setProcessingAllChapters(false);
+          setRefreshAIFields((prev) => prev + 1); // Trigger AI field refresh
+          console.log('AI enrichment complete for all chapters!');
+        } else if (pollCount >= maxPolls) {
           clearInterval(pollInterval);
           setProcessingAllChapters(false);
           console.log(
             'AI enrichment timeout - manually refresh to see updates'
           );
         }
-      }, 3000);
-
-      // Stop processing state after initial call
-      setTimeout(() => {
-        setProcessingAllChapters(false);
-      }, 5000);
+      }, 1000);
     } catch (error) {
       console.error('AI enrichment error:', error);
       setProcessingAllChapters(false);
@@ -434,6 +504,7 @@ export function BookNotesEditor() {
               key={chunkViewerKey.current}
               bookId={bookInfo.id}
               isBook={true}
+              refreshAIFields={refreshAIFields}
             />
           </div>
         )}

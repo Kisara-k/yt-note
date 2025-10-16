@@ -175,6 +175,34 @@ def get_chapter_index(book_id: str) -> List[Dict[str, Any]]:
         return []
 
 
+def get_chapter_metadata(book_id: str, chapter_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Get chapter metadata only (no text loading from storage)
+    Lightweight query for verification and titles
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Chapter identifier
+        
+    Returns:
+        Chapter metadata without chapter_text
+    """
+    try:
+        print(f"[DB->] SELECT chapter metadata WHERE book_id={book_id} AND chapter_id={chapter_id}")
+        response = supabase.table("book_chapters").select("*").eq("book_id", book_id).eq("chapter_id", chapter_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"[DB<-] Found chapter {chapter_id} metadata")
+            return response.data[0]
+        else:
+            print(f"[DB<-] Chapter not found")
+            return None
+            
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
 def get_chapter_details(book_id: str, chapter_id: int) -> Optional[Dict[str, Any]]:
     """
     Get chapter details with text loaded from storage

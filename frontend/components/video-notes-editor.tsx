@@ -55,6 +55,7 @@ export function VideoNotesEditor() {
   const [hasSubtitles, setHasSubtitles] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const chunkViewerKey = useRef(0);
+  const [refreshAIFields, setRefreshAIFields] = useState(0);
   const hasLoadedInitial = useRef(false);
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
@@ -350,10 +351,10 @@ export function VideoNotesEditor() {
     }
   };
 
-  const checkAIEnrichment = async (video_id: string) => {
+  const loadAllChunksAIFields = async (video_id: string) => {
     try {
       const token = await getAccessToken();
-      if (!token) return false;
+      if (!token) return null;
 
       const response = await fetch(
         `http://localhost:8000/api/chunks/${video_id}`,
@@ -366,19 +367,53 @@ export function VideoNotesEditor() {
 
       if (response.ok) {
         const data = await response.json();
-        // Check if at least one chunk has AI fields populated
         if (data.chunks && data.chunks.length > 0) {
-          const hasAI = data.chunks.some(
-            (chunk: any) => chunk.short_title || chunk.ai_field_1
-          );
-          return hasAI;
+          // Return a map of chunk_id to AI fields for comparison
+          return data.chunks.map((chunk: any) => ({
+            chunk_id: chunk.chunk_id,
+            short_title: chunk.short_title || '',
+            ai_field_1: chunk.ai_field_1 || '',
+          }));
         }
       }
-      return false;
+      return null;
     } catch (error) {
-      console.error('Error checking AI enrichment:', error);
-      return false;
+      console.error('Error loading AI fields:', error);
+      return null;
     }
+  };
+
+  const checkAIEnrichment = async (
+    video_id: string,
+    previousData?: Array<{
+      chunk_id: number;
+      short_title: string;
+      ai_field_1: string;
+    }>
+  ) => {
+    const currentData = await loadAllChunksAIFields(video_id);
+    if (!currentData || currentData.length === 0) return false;
+
+    // If no previous data provided, just check if any chunk has AI fields
+    if (!previousData) {
+      return currentData.some(
+        (chunk: any) => chunk.short_title || chunk.ai_field_1
+      );
+    }
+
+    // Compare with previous data to detect new enrichment
+    const hasNewData = currentData.some((current: any) => {
+      const previous = previousData.find(
+        (p) => p.chunk_id === current.chunk_id
+      );
+      if (!previous) return false;
+      return (
+        current.short_title !== previous.short_title ||
+        current.ai_field_1 !== previous.ai_field_1
+      );
+    });
+
+    return hasNewData;
   };
 
   const handleProcessSubtitles = async () => {
@@ -482,17 +517,23 @@ export function VideoNotesEditor() {
       // toast.success('AI enrichment started! Check backend logs for progress.');
       console.log('AI enrichment started:', result);
 
+      // Store current AI state before enrichment
+      const currentAIState = await loadAllChunksAIFields(videoInfo.video_id);
+
       // Poll to check if AI enrichment is complete
       let pollCount = 0;
-      const maxPolls = 60; // 3 minutes (60 * 3 seconds)
+      const maxPolls = 180; // 3 minutes (180 * 1 second)
       const pollInterval = setInterval(async () => {
         pollCount++;
-        const hasAIEnrichment = await checkAIEnrichment(videoInfo.video_id);
+        const hasAIEnrichment = await checkAIEnrichment(
+          videoInfo.video_id,
+          currentAIState || undefined
+        );
 
         if (hasAIEnrichment) {
           clearInterval(pollInterval);
           setProcessingAI(false);
-          chunkViewerKey.current += 1; // Force ChunkViewer to refresh
+          setRefreshAIFields((prev) => prev + 1); // Trigger AI field refresh
           // toast.success('AI enrichment complete! Chunks updated.');
           console.log('AI enrichment complete!');
         } else if (pollCount >= maxPolls) {
@@ -503,7 +544,7 @@ export function VideoNotesEditor() {
             'AI enrichment timeout - manually refresh to see updates'
           );
         }
-      }, 3000);
+      }, 1000);
     } catch (error) {
       console.error('AI enrichment error:', error);
       // toast.error(error instanceof Error ? error.message : 'Failed to start AI enrichment');
@@ -834,6 +875,7 @@ export function VideoNotesEditor() {
             <ChunkViewer
               key={chunkViewerKey.current}
               videoId={videoInfo.video_id}
+              refreshAIFields={refreshAIFields}
             />
           </div>
         )}
