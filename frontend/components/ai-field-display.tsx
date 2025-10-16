@@ -90,7 +90,7 @@ export function AIFieldDisplay({
         <div className='flex items-center justify-between gap-2'>
           <CardTitle className='text-sm'>
             {title}
-            {hasUnsavedChanges && <span className='text-amber-500'>*</span>}
+            {hasUnsavedChanges && <span className='text-amber-500'> *</span>}
           </CardTitle>
           <div className='flex items-center gap-1 shrink-0'>
             {onUpdate && !isEditing && (
@@ -152,7 +152,7 @@ export function AIFieldDisplay({
         className={`${height} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500`}
         style={{
           scrollbarWidth: 'thin',
-          scrollbarColor: 'rgb(156 163 175) transparent',
+          scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
         }}
       >
         {isLoading && !isRegenerating ? (
