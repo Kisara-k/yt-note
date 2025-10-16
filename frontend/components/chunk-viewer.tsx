@@ -373,9 +373,21 @@ export function ChunkViewer({
         : data.chunks?.find((ch: any) => ch.chunk_id === chunkId);
 
       if (!item) {
-        console.error('Item not found in list');
+        console.error('Item not found in list', {
+          chunkId,
+          totalItems: isBook ? data.chapters?.length : data.chunks?.length,
+          dataKeys: Object.keys(data),
+        });
         return null;
       }
+
+      console.log('Loaded complete AI fields:', {
+        chunkId,
+        short_title: isBook ? item.chapter_title : item.short_title,
+        ai_field_1: item.ai_field_1?.substring(0, 50) || '',
+        ai_field_2: item.ai_field_2?.substring(0, 50) || '',
+        ai_field_3: item.ai_field_3?.substring(0, 50) || '',
+      });
 
       return {
         short_title: isBook ? item.chapter_title : item.short_title,
@@ -396,10 +408,30 @@ export function ChunkViewer({
     const aiFields = await loadChunkAIFields(chunkId);
     if (!aiFields) return false;
 
-    // Check if the AI fields have changed from the previous state
-    const hasNewData =
-      aiFields.short_title !== previousData.short_title ||
-      aiFields.ai_field_1 !== previousData.ai_field_1;
+    // Only consider it a change if the NEW value has actual content
+    // This prevents triggering on empty->empty or undefined->empty transitions
+    const titleChanged =
+      aiFields.short_title !== previousData.short_title &&
+      aiFields.short_title &&
+      aiFields.short_title.trim().length > 0;
+
+    const field1Changed =
+      aiFields.ai_field_1 !== previousData.ai_field_1 &&
+      aiFields.ai_field_1 &&
+      aiFields.ai_field_1.trim().length > 0;
+
+    const hasNewData = titleChanged || field1Changed;
+
+    console.log('Checking AI enrichment:', {
+      chunkId,
+      previousTitle: previousData.short_title?.substring(0, 30) || 'empty',
+      currentTitle: aiFields.short_title?.substring(0, 30) || 'empty',
+      previousField1: previousData.ai_field_1?.substring(0, 30) || 'empty',
+      currentField1: aiFields.ai_field_1?.substring(0, 30) || 'empty',
+      titleChanged,
+      field1Changed,
+      hasNewData,
+    });
 
     return hasNewData ? aiFields : false;
   };
@@ -484,24 +516,45 @@ export function ChunkViewer({
           enrichmentComplete = true; // Set flag immediately
           clearInterval(pollInterval);
 
+          // Wait a moment for the database write to complete
+          // The AI status endpoint might return before the full data is written
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           // Load complete AI fields (all fields, not just title and field_1)
           const completeAIFields = await loadCompleteAIFields(
             chunkDetails.chunk_id
           );
 
-          // Update with complete AI fields
-          setChunkDetails((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  short_title:
-                    completeAIFields?.short_title || prev.short_title,
-                  ai_field_1: completeAIFields?.ai_field_1 || '',
-                  ai_field_2: completeAIFields?.ai_field_2 || '',
-                  ai_field_3: completeAIFields?.ai_field_3 || '',
-                }
-              : prev
-          );
+          // Update with complete AI fields (only if successfully loaded)
+          if (completeAIFields) {
+            console.log('Updating chunk details with complete AI fields:', {
+              prev_ai_field_1:
+                chunkDetails.ai_field_1?.substring(0, 50) || 'empty',
+              new_ai_field_1:
+                completeAIFields.ai_field_1?.substring(0, 50) || 'empty',
+              new_ai_field_2:
+                completeAIFields.ai_field_2?.substring(0, 50) || 'empty',
+              new_ai_field_3:
+                completeAIFields.ai_field_3?.substring(0, 50) || 'empty',
+            });
+
+            setChunkDetails((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    short_title:
+                      completeAIFields.short_title || prev.short_title,
+                    ai_field_1: completeAIFields.ai_field_1 || '',
+                    ai_field_2: completeAIFields.ai_field_2 || '',
+                    ai_field_3: completeAIFields.ai_field_3 || '',
+                  }
+                : prev
+            );
+          } else {
+            console.error(
+              'completeAIFields is null, not updating chunk details'
+            );
+          }
           // Reload chunk index to update titles in the dropdown
           // This is now safe because we fixed the useEffect dependencies to prevent cascade
           loadChunkIndex();

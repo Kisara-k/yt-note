@@ -22,6 +22,7 @@ import {
   ThumbsUp,
   Plus,
   Sparkles,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -494,18 +495,19 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
         if (result.hasChunks && result.count > 0) {
           clearInterval(pollInterval);
+          setProcessingSubtitles(false);
           console.log(
             `Subtitles processed successfully! ${result.count} chunks created.`
           );
           chunkViewerKey.current += 1;
         } else if (pollCount >= maxPolls) {
           clearInterval(pollInterval);
+          setProcessingSubtitles(false);
           console.log('Subtitle processing timeout');
         }
       }, 3000);
     } catch (error) {
       console.error('Subtitle processing error:', error);
-    } finally {
       setProcessingSubtitles(false);
     }
   };
@@ -708,6 +710,20 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
                 >
                   <Plus className='mr-2 h-4 w-4' />
                   Add Book
+                </Button>
+              )}
+              {!isVideo && contentInfo && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() =>
+                    router.push(
+                      `/book/chunks?b=${(contentInfo as BookInfo).id}`
+                    )
+                  }
+                >
+                  <Edit3 className='mr-2 h-4 w-4' />
+                  Edit Chunks
                 </Button>
               )}
             </div>
