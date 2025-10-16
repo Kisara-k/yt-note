@@ -7,6 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Loader2,
   BookOpen,
   Plus,
@@ -51,6 +59,9 @@ export function BookChunkEditor({
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { getAccessToken } = useAuth();
   const { showChunkText } = useSettings();
   const router = useRouter();
@@ -194,8 +205,7 @@ export function BookChunkEditor({
   };
 
   const handleDeleteChapter = async (chapterId: number) => {
-    if (!confirm('Are you sure you want to delete this chapter?')) return;
-
+    setDeleting(true);
     try {
       const token = await getAccessToken();
       if (!token) {
@@ -224,9 +234,27 @@ export function BookChunkEditor({
         setEditingChapter(null);
         setSelectedChapterId(null);
       }
+
+      // Close dialog
+      setDeleteDialogOpen(false);
+      setChapterToDelete(null);
     } catch (error) {
       console.error('Error deleting chapter:', error);
       toast.error('Failed to delete chapter');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (chapterId: number) => {
+    setChapterToDelete(chapterId);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (!deleting) {
+      setDeleteDialogOpen(false);
+      setChapterToDelete(null);
     }
   };
 
@@ -501,10 +529,10 @@ export function BookChunkEditor({
                             size='sm'
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteChapter(chapter.chapter_id);
+                              openDeleteDialog(chapter.chapter_id);
                             }}
                           >
-                            <Trash2 className='h-4 w-4 text-destructive' />
+                            <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
                       </div>
@@ -624,6 +652,44 @@ export function BookChunkEditor({
           </Card>
         ) : null}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={closeDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Chapter</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this chapter? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={closeDeleteDialog}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant='outline'
+              onClick={() =>
+                chapterToDelete && handleDeleteChapter(chapterToDelete)
+              }
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

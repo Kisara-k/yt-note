@@ -703,28 +703,31 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
                 </Button>
               )}
               {!isVideo && (
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => router.push('/book/add')}
-                >
-                  <Plus className='mr-2 h-4 w-4' />
-                  Add Book
-                </Button>
-              )}
-              {!isVideo && contentInfo && (
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() =>
-                    router.push(
-                      `/book/chunks?b=${(contentInfo as BookInfo).id}`
-                    )
-                  }
-                >
-                  <Edit3 className='mr-2 h-4 w-4' />
-                  Edit Chunks
-                </Button>
+                <>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => router.push('/book/add')}
+                  >
+                    <Plus className='mr-2 h-4 w-4' />
+                    Add Book
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => {
+                      if (contentInfo) {
+                        router.push(
+                          `/book/chunks?b=${(contentInfo as BookInfo).id}`
+                        );
+                      }
+                    }}
+                    disabled={!contentInfo}
+                  >
+                    <Edit3 className='mr-2 h-4 w-4' />
+                    Edit Chunks
+                  </Button>
+                </>
               )}
             </div>
 
