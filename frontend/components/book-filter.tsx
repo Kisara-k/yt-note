@@ -6,6 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -20,6 +28,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -41,6 +50,12 @@ type SortDirection = 'asc' | 'desc' | null;
 export function BookFilter() {
   const [books, setBooks] = useState<BookInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [filters, setFilters] = useState({
@@ -97,6 +112,46 @@ export function BookFilter() {
       title: '',
       selectedTags: [],
     });
+  };
+
+  const openDeleteDialog = (bookId: string, bookTitle: string) => {
+    setBookToDelete({ id: bookId, title: bookTitle });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteBook = async () => {
+    if (!bookToDelete) return;
+
+    setDeletingId(bookToDelete.id);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:8000/api/book/${bookToDelete.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete book');
+      }
+
+      // Remove book from local state
+      setBooks((prev) => prev.filter((b) => b.id !== bookToDelete.id));
+      setDeleteDialogOpen(false);
+      setBookToDelete(null);
+    } catch (error) {
+      console.error('Error deleting book:', error);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -283,7 +338,7 @@ export function BookFilter() {
                       </Button>
                     </TableHead>
                     <TableHead className='w-[20%]'>Tags</TableHead>
-                    <TableHead className='w-[10%]'></TableHead>
+                    <TableHead className='w-[15%]'>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -321,11 +376,27 @@ export function BookFilter() {
                         </div>
                       </TableCell>
                       <TableCell className='py-2'>
-                        <Link href={`/book?b=${book.id}`}>
-                          <Button variant='outline' size='sm'>
-                            View
+                        <div className='flex gap-2'>
+                          <Link href={`/book?b=${book.id}`}>
+                            <Button variant='outline' size='sm'>
+                              View
+                            </Button>
+                          </Link>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() =>
+                              openDeleteDialog(book.id, book.title)
+                            }
+                            disabled={deletingId === book.id}
+                          >
+                            {deletingId === book.id ? (
+                              <Loader2 className='h-4 w-4 animate-spin' />
+                            ) : (
+                              <Trash2 className='h-4 w-4' />
+                            )}
                           </Button>
-                        </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -341,6 +412,45 @@ export function BookFilter() {
           </Card>
         )}
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Book</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{bookToDelete?.title}"? This
+              action cannot be undone. All chapters will be deleted, but your
+              notes will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setBookToDelete(null);
+              }}
+              disabled={deletingId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant='outline'
+              onClick={handleDeleteBook}
+              disabled={deletingId !== null}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

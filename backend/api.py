@@ -35,7 +35,7 @@ from orchestrator import (
 # Import from auth and db directly
 from auth import get_current_user, is_email_verified
 from prompts import get_all_prompts, get_prompt_label
-from db.youtube_crud import get_video_by_id, get_all_videos
+from db.youtube_crud import get_video_by_id, get_all_videos, delete_video
 from db.video_notes_crud import (
     create_or_update_note,
     get_note_by_video_id,
@@ -52,7 +52,8 @@ from db.subtitle_chunks_crud import (
 from db.books_crud import (
     create_book,
     get_book_by_id,
-    get_all_books
+    get_all_books,
+    delete_book
 )
 from db.book_chapters_crud import (
     create_chapter,
@@ -1446,6 +1447,66 @@ async def get_prompts(content_type: str = 'video', current_user: dict = Depends(
             for key in prompts_dict
         ]
         return {"prompts": prompts_list, "count": len(prompts_list), "content_type": content_type}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/video/{video_id}")
+async def delete_video_endpoint(
+    video_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a video and its associated chunks
+    
+    Args:
+        video_id: YouTube video ID
+        current_user: Authenticated user (required)
+        
+    Returns:
+        Success message
+        
+    Note:
+        - Deletes storage files first, then DB record
+        - Cascades to subtitle_chunks
+        - Does NOT delete video_notes (preserved as orphaned records)
+    """
+    try:
+        success = delete_video(video_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
+        return {"message": f"Video {video_id} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/book/{book_id}")
+async def delete_book_endpoint(
+    book_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a book and its associated chapters
+    
+    Args:
+        book_id: Book identifier
+        current_user: Authenticated user (required)
+        
+    Returns:
+        Success message
+        
+    Note:
+        - Deletes storage files first, then DB record
+        - Cascades to book_chapters
+        - Does NOT delete book_notes (preserved as orphaned records)
+    """
+    try:
+        success = delete_book(book_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+        return {"message": f"Book {book_id} deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:

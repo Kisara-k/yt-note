@@ -6,6 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -27,6 +35,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
@@ -54,6 +63,12 @@ type SortDirection = 'asc' | 'desc' | null;
 export function VideoFilter() {
   const [videos, setVideos] = useState<VideoInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [filters, setFilters] = useState({
@@ -137,6 +152,46 @@ export function VideoFilter() {
       maxDuration: '',
       selectedTags: [],
     });
+  };
+
+  const openDeleteDialog = (videoId: string, videoTitle: string) => {
+    setVideoToDelete({ id: videoId, title: videoTitle });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteVideo = async () => {
+    if (!videoToDelete) return;
+
+    setDeletingId(videoToDelete.id);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:8000/api/video/${videoToDelete.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete video');
+      }
+
+      // Remove video from local state
+      setVideos((prev) => prev.filter((v) => v.id !== videoToDelete.id));
+      setDeleteDialogOpen(false);
+      setVideoToDelete(null);
+    } catch (error) {
+      console.error('Error deleting video:', error);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -425,6 +480,7 @@ export function VideoFilter() {
                       </Button>
                     </TableHead>
                     <TableHead className='w-[15%]'>Tags</TableHead>
+                    <TableHead className='w-[10%]'>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -467,6 +523,22 @@ export function VideoFilter() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className='py-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() =>
+                            openDeleteDialog(video.id, video.title)
+                          }
+                          disabled={deletingId === video.id}
+                        >
+                          {deletingId === video.id ? (
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                          ) : (
+                            <Trash2 className='h-4 w-4' />
+                          )}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -481,6 +553,45 @@ export function VideoFilter() {
           </Card>
         )}
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Video</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{videoToDelete?.title}"? This
+              action cannot be undone. All chunks will be deleted, but your
+              notes will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setVideoToDelete(null);
+              }}
+              disabled={deletingId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant='outline'
+              onClick={handleDeleteVideo}
+              disabled={deletingId !== null}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

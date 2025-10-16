@@ -233,7 +233,7 @@ export function BookAdd() {
                 size='sm'
                 onClick={() => router.push('/book')}
               >
-                Books
+                Back to Notes
               </Button>
               <Button
                 variant='outline'
