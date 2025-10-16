@@ -6,6 +6,8 @@ Uses orchestrator for all module coordination
 import os
 import sys
 import threading
+import json
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -111,7 +113,11 @@ class BookRequest(BaseModel):
     isbn: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    chapters: List[Dict[str, str]]  # List of {chapter_title, chapter_text}
+    chapters: List[Dict[str, Any]]  # Flexible: accept any dict, will normalize later
+    
+    class Config:
+        # Allow extra fields to be ignored
+        extra = "ignore"
 
 
 class BookNoteRequest(BaseModel):
@@ -163,6 +169,73 @@ class VerifyEmailRequest(BaseModel):
 class VerifyEmailResponse(BaseModel):
     is_verified: bool
     message: str
+
+
+# Utility Functions for JSON Cleaning
+def clean_json_string(json_str: str) -> str:
+    """
+    Clean JSON string by removing trailing commas, fixing formatting issues
+    
+    Args:
+        json_str: Raw JSON string that may have formatting issues
+        
+    Returns:
+        Cleaned JSON string that's valid JSON
+    """
+    # Remove trailing commas before closing brackets/braces
+    json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+    
+    # Remove comments (both // and /* */ style)
+    json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
+    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+    
+    # Normalize whitespace (but keep it for readability)
+    # This is optional but helps with very malformed JSON
+    lines = json_str.split('\n')
+    cleaned_lines = [line.rstrip() for line in lines]
+    json_str = '\n'.join(cleaned_lines)
+    
+    return json_str
+
+
+def normalize_chapter_data(chapters_raw: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """
+    Normalize chapter data to expected format, handling various field name variations
+    
+    Args:
+        chapters_raw: Raw chapter data with potentially inconsistent field names
+        
+    Returns:
+        Normalized list of chapters with 'title' and 'content' fields
+    """
+    normalized = []
+    
+    for idx, chapter in enumerate(chapters_raw):
+        # Handle different field name variations
+        title = (
+            chapter.get('title') or 
+            chapter.get('chapter_title') or 
+            chapter.get('name') or 
+            chapter.get('heading') or
+            f"Chapter {idx + 1}"
+        )
+        
+        content = (
+            chapter.get('content') or 
+            chapter.get('chapter_text') or 
+            chapter.get('text') or 
+            chapter.get('body') or
+            ""
+        )
+        
+        # Only include chapters with actual content
+        if content:
+            normalized.append({
+                'title': str(title).strip(),
+                'content': str(content).strip()
+            })
+    
+    return normalized
 
 
 # Routes
@@ -867,14 +940,23 @@ async def get_video_chunk_index_no_auth(video_id: str):
 async def create_book_endpoint(request: BookRequest, current_user: dict = Depends(get_current_user)):
     """Create a new book with chapters from uploaded JSON"""
     try:
-        # Validate chapters have required fields
+        # Normalize chapter data (handle different field names, extra fields, etc.)
+        normalized_chapters = normalize_chapter_data(request.chapters)
+        
+        if not normalized_chapters:
+            raise HTTPException(
+                status_code=400, 
+                detail="No valid chapters found. Each chapter must have content (or chapter_text/text field)."
+            )
+        
+        # Validate chapters have required fields after normalization
         missing_fields = []
-        for idx, chapter_data in enumerate(request.chapters):
+        for idx, chapter_data in enumerate(normalized_chapters):
             chapter_num = idx + 1
-            if 'title' not in chapter_data or not chapter_data['title']:
-                missing_fields.append(f"Chapter {chapter_num}: missing 'title'")
-            if 'content' not in chapter_data or not chapter_data['content']:
-                missing_fields.append(f"Chapter {chapter_num}: missing 'content'")
+            if not chapter_data.get('title'):
+                missing_fields.append(f"Chapter {chapter_num}: missing or empty 'title'")
+            if not chapter_data.get('content'):
+                missing_fields.append(f"Chapter {chapter_num}: missing or empty 'content'")
         
         if missing_fields:
             error_msg = "Invalid chapters - " + "; ".join(missing_fields)
@@ -896,9 +978,8 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
             raise HTTPException(status_code=500, detail="Failed to create book")
         
         # Create chapters (1-indexed: starting from 1)
-        # Only use 'title' and 'content' fields, ignore any other fields
         chapter_count = 0
-        for idx, chapter_data in enumerate(request.chapters):
+        for idx, chapter_data in enumerate(normalized_chapters):
             chapter = create_chapter(
                 book_id=request.book_id,
                 chapter_id=idx + 1,  # 1-indexed
@@ -913,13 +994,17 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
             "title": request.title,
             "author": request.author,
             "chapter_count": chapter_count,
-            "message": "Book created successfully"
+            "message": f"Book created successfully with {chapter_count} chapters"
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Provide more detailed error message
+        error_detail = str(e)
+        if "json" in error_detail.lower() or "parse" in error_detail.lower():
+            error_detail = f"JSON parsing error: {error_detail}. Please check your JSON format."
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 @app.get("/api/book/{book_id}")
