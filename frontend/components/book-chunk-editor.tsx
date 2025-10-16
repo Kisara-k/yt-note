@@ -19,8 +19,10 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { useSettings } from '@/lib/settings-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { ChunkTextToggle } from '@/components/chunk-text-toggle';
 
 interface Chapter {
   chapter_id: number;
@@ -50,6 +52,7 @@ export function BookChunkEditor({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const { getAccessToken } = useAuth();
+  const { showChunkText } = useSettings();
   const router = useRouter();
 
   useEffect(() => {
@@ -94,14 +97,19 @@ export function BookChunkEditor({
   };
 
   const loadChapterText = async (chapter: Chapter) => {
+    // If showChunkText is false, don't load the text
+    if (!showChunkText) {
+      return '';
+    }
+
     if (!chapter.chapter_text && chapter.chapter_text_path) {
       setLoadingText((prev) => ({ ...prev, [chapter.chapter_id]: true }));
       try {
         const token = await getAccessToken();
-        if (!token) return;
+        if (!token) return '';
 
         const response = await fetch(
-          `http://localhost:8000/api/book/${bookId}/chapter/${chapter.chapter_id}`,
+          `http://localhost:8000/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -376,7 +384,10 @@ export function BookChunkEditor({
       <div className='container mx-auto p-6 max-w-7xl'>
         <div className='mb-8'>
           <div className='flex justify-between items-center mb-4'>
-            <h1 className='text-3xl font-bold'>Book Chunk Editor</h1>
+            <div className='flex items-center gap-4'>
+              <h1 className='text-3xl font-bold'>Book Chunk Editor</h1>
+              <ChunkTextToggle />
+            </div>
             <div className='flex items-center gap-2'>
               <Button
                 variant='outline'
@@ -543,26 +554,28 @@ export function BookChunkEditor({
                       />
                     </div>
 
-                    <div>
-                      <Label htmlFor='chapter-text'>Chapter Text</Label>
-                      <Textarea
-                        id='chapter-text'
-                        className='min-h-[400px] text-sm'
-                        value={
-                          loadingText[editingChapter.chapter_id]
-                            ? 'Loading chapter text...'
-                            : editingChapter.chapter_text || ''
-                        }
-                        onChange={(e) =>
-                          setEditingChapter({
-                            ...editingChapter,
-                            chapter_text: e.target.value,
-                          })
-                        }
-                        placeholder='Enter chapter text...'
-                        disabled={loadingText[editingChapter.chapter_id]}
-                      />
-                    </div>
+                    {showChunkText && (
+                      <div>
+                        <Label htmlFor='chapter-text'>Chapter Text</Label>
+                        <Textarea
+                          id='chapter-text'
+                          className='min-h-[400px] text-sm'
+                          value={
+                            loadingText[editingChapter.chapter_id]
+                              ? 'Loading chapter text...'
+                              : editingChapter.chapter_text || ''
+                          }
+                          onChange={(e) =>
+                            setEditingChapter({
+                              ...editingChapter,
+                              chapter_text: e.target.value,
+                            })
+                          }
+                          placeholder='Enter chapter text...'
+                          disabled={loadingText[editingChapter.chapter_id]}
+                        />
+                      </div>
+                    )}
 
                     <div className='flex justify-end gap-2'>
                       <Button

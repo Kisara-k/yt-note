@@ -1012,10 +1012,10 @@ async def get_chapter_ai_status(book_id: str, chapter_id: Optional[int] = None, 
 
 
 @app.get("/api/book/{book_id}/chapter/{chapter_id}")
-async def get_chapter_endpoint(book_id: str, chapter_id: int, current_user: dict = Depends(get_current_user)):
-    """Get chapter details with text"""
+async def get_chapter_endpoint(book_id: str, chapter_id: int, include_text: bool = True, current_user: dict = Depends(get_current_user)):
+    """Get chapter details with optional text loading"""
     try:
-        chapter = get_chapter_details(book_id, chapter_id)
+        chapter = get_chapter_details(book_id, chapter_id, include_text=include_text)
         if not chapter:
             raise HTTPException(status_code=404, detail="Chapter not found")
         return chapter

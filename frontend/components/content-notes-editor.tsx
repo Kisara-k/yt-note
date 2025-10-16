@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
+import { ChunkTextToggle } from '@/components/chunk-text-toggle';
 import { NoteEditor } from '@/components/note-editor';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
@@ -678,6 +679,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
             </div>
 
             <div className='flex items-center gap-2'>
+              <ChunkTextToggle />
               <Button
                 variant='outline'
                 size='sm'

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
+import { useSettings } from '@/lib/settings-context';
 import { CustomTooltip } from '@/components/custom-tooltip';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { NoteEditor } from '@/components/note-editor';
@@ -68,6 +69,7 @@ export function ChunkViewer({
     null
   );
   const { getAccessToken } = useAuth();
+  const { showChunkText } = useSettings();
 
   const resourceId = isBook ? bookId : videoId;
 
@@ -143,8 +145,8 @@ export function ChunkViewer({
         }
 
         const endpoint = isBook
-          ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkId}`
-          : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}`;
+          ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkId}?include_text=${showChunkText}`
+          : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}?include_text=${showChunkText}`;
 
         const response = await fetch(endpoint, {
           headers: {
@@ -188,7 +190,7 @@ export function ChunkViewer({
         setLoading(false);
       }
     },
-    [resourceId, isBook, getAccessToken]
+    [resourceId, isBook, getAccessToken, showChunkText]
   );
 
   useEffect(() => {
@@ -204,6 +206,14 @@ export function ChunkViewer({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChunkId]); // Only re-run when selectedChunkId changes, not when loadChunkDetails changes
+
+  // Reload chunk details when showChunkText setting changes
+  useEffect(() => {
+    if (selectedChunkId !== null) {
+      loadChunkDetails(selectedChunkId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showChunkText]); // Reload when the setting changes
 
   // Refresh AI fields when refreshAIFields prop changes (both books and videos)
   useEffect(() => {
@@ -788,14 +798,16 @@ export function ChunkViewer({
             isLoading={loading || loadingChunks}
           />
 
-          <AIFieldDisplay
-            title={isBook ? 'Chapter Text' : 'Chunk Text'}
-            content={chunkDetails?.chunk_text}
-            // height='h-48'
-            onUpdate={handleUpdateChunkText}
-            isLoading={loading || loadingChunks}
-            useMarkdown={false}
-          />
+          {showChunkText && (
+            <AIFieldDisplay
+              title={isBook ? 'Chapter Text' : 'Chunk Text'}
+              content={chunkDetails?.chunk_text}
+              // height='h-48'
+              onUpdate={handleUpdateChunkText}
+              isLoading={loading || loadingChunks}
+              useMarkdown={false}
+            />
+          )}
         </div>
 
         {loading || loadingChunks ? (

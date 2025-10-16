@@ -203,16 +203,17 @@ def get_chapter_metadata(book_id: str, chapter_id: int) -> Optional[Dict[str, An
         return None
 
 
-def get_chapter_details(book_id: str, chapter_id: int) -> Optional[Dict[str, Any]]:
+def get_chapter_details(book_id: str, chapter_id: int, include_text: bool = True) -> Optional[Dict[str, Any]]:
     """
-    Get chapter details with text loaded from storage
+    Get chapter details with optional text loading from storage
     
     Args:
         book_id: Book identifier
         chapter_id: Chapter identifier
+        include_text: If True, load chapter_text from storage (default: True)
         
     Returns:
-        Chapter record with chapter_text or None if not found
+        Chapter record with chapter_text (if include_text=True) or None if not found
     """
     try:
         print(f"[DB->] SELECT book_chapters WHERE book_id={book_id} AND chapter_id={chapter_id}")
@@ -221,8 +222,11 @@ def get_chapter_details(book_id: str, chapter_id: int) -> Optional[Dict[str, Any
         if response.data and len(response.data) > 0:
             chapter = response.data[0]
             print(f"[DB<-] Found chapter {chapter_id}")
-            # Load chapter text from storage
-            load_chapter_text(chapter)
+            # Load chapter text from storage only if requested
+            if include_text:
+                load_chapter_text(chapter)
+            else:
+                chapter['chapter_text'] = None
             return chapter
         else:
             print(f"[DB<-] Chapter not found")
