@@ -559,7 +559,7 @@ export function ChunkViewer({
           <AIFieldDisplay
             title='Summary'
             content={chunkDetails?.ai_field_1}
-            height='h-48'
+            // height='h-48'
             onRegenerate={() => handleRegenerateField('field_1')}
             onUpdate={(newContent) => handleUpdateField('field_1', newContent)}
             isRegenerating={regeneratingField === 'field_1'}
@@ -569,7 +569,7 @@ export function ChunkViewer({
           <AIFieldDisplay
             title='Key Points'
             content={chunkDetails?.ai_field_2}
-            height='h-48'
+            // height='h-48'
             onRegenerate={() => handleRegenerateField('field_2')}
             onUpdate={(newContent) => handleUpdateField('field_2', newContent)}
             isRegenerating={regeneratingField === 'field_2'}
@@ -579,7 +579,7 @@ export function ChunkViewer({
           <AIFieldDisplay
             title='Topics'
             content={chunkDetails?.ai_field_3}
-            height='h-48'
+            // height='h-48'
             onRegenerate={() => handleRegenerateField('field_3')}
             onUpdate={(newContent) => handleUpdateField('field_3', newContent)}
             isRegenerating={regeneratingField === 'field_3'}
@@ -589,7 +589,7 @@ export function ChunkViewer({
           <AIFieldDisplay
             title={isBook ? 'Chapter Text' : 'Chunk Text'}
             content={chunkDetails?.chunk_text}
-            height='h-48'
+            // height='h-48'
             onUpdate={handleUpdateChunkText}
             isLoading={loading || loadingChunks}
             useMarkdown={false}

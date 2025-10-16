@@ -392,25 +392,15 @@ export function BookNotesEditor() {
 
                 <div className='flex flex-col gap-2'>
                   <CustomTooltip content='Generate AI enrichment for all book chapters'>
-                    <Button
+                    <ActionButton
                       onClick={handleProcessAllChapters}
                       disabled={processingAllChapters}
-                      size='sm'
-                      variant='default'
-                      className='w-[110px] justify-start'
+                      loading={processingAllChapters}
+                      loadingText='Processing...'
+                      icon={PlayCircle}
                     >
-                      {processingAllChapters ? (
-                        <>
-                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <PlayCircle className='mr-2 h-4 w-4' />
-                          AI
-                        </>
-                      )}
-                    </Button>
+                      AI
+                    </ActionButton>
                   </CustomTooltip>
                 </div>
               </div>
