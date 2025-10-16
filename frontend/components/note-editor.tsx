@@ -28,7 +28,7 @@ export function NoteEditor({
   isSaving,
   hasUnsavedChanges,
   placeholder = 'Start writing your notes here...',
-  minHeight = 'min-h-[150px]',
+  minHeight = 'min-h-[100px]',
   disabled = false,
 }: NoteEditorProps) {
   // Handle Ctrl+S to save the note

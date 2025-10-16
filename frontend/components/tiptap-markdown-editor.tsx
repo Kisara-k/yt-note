@@ -87,7 +87,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
   };
 
   return (
-    <div className='border-b p-2 flex flex-wrap items-center gap-1'>
+    <div className='border-b p-0.5 flex flex-wrap items-center gap-1'>
       <Toggle
         size='sm'
         pressed={editor.isActive('bold')}
