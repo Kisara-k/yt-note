@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
 import {
   Select,
   SelectContent,
@@ -493,25 +494,14 @@ export function ChunkViewer({
             isBook ? 'chapter' : 'chunk'
           }`}
         >
-          <Button
-            size='sm'
+          <ActionButton
             onClick={handleProcessChapterAI}
             disabled={processingChapter || !chunkDetails || loadingChunks}
-            variant='outline'
-            className='whitespace-nowrap'
+            loading={processingChapter}
+            icon={Sparkles}
           >
-            {processingChapter ? (
-              <>
-                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className='mr-2 h-4 w-4' />
-                AI Process
-              </>
-            )}
-          </Button>
+            AI Process
+          </ActionButton>
         </CustomTooltip>
       </div>
 

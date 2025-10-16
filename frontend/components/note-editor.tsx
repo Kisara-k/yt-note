@@ -41,20 +41,20 @@ export function NoteEditor({
           <Button
             onClick={onSave}
             disabled={isSaving || !hasUnsavedChanges || disabled}
-            variant='default'
+            variant='outline'
             size='sm'
-            className='h-7 px-2'
+            className='h-7 px-2 w-20 relative'
           >
             {isSaving ? (
-              <>
-                <Loader2 className='mr-2 h-3 w-3 animate-spin' />
-                Saving...
-              </>
+              <div className='flex items-center justify-center w-full pl-5'>
+                <Loader2 className='absolute left-2 h-3 w-3 animate-spin' />
+                <span className='text-xs'>Saving...</span>
+              </div>
             ) : (
-              <>
-                <Save className='mr-2 h-3 w-3' />
-                Save Note
-              </>
+              <div className='flex items-center justify-center w-full pl-5'>
+                <Save className='absolute left-2 h-3 w-3' />
+                <span className='text-xs'>Save</span>
+              </div>
             )}
           </Button>
         </div>

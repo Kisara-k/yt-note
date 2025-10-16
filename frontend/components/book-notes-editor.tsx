@@ -5,6 +5,7 @@ import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
 import { NoteEditor } from '@/components/note-editor';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -345,23 +346,15 @@ export function BookNotesEditor() {
                 className='text-base'
               />
             </div>
-            <Button
+            <ActionButton
               onClick={handleLoadBook}
               disabled={loading || !bookId.trim()}
-              className='w-[110px]'
+              loading={loading}
+              loadingText='Loading...'
+              icon={BookOpen}
             >
-              {loading ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <BookOpen className='mr-2 h-4 w-4' />
-                  Load Book
-                </>
-              )}
-            </Button>
+              Load Book
+            </ActionButton>
           </div>
 
           {bookInfo && (

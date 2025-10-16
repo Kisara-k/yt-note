@@ -5,6 +5,7 @@ import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { ChunkViewer } from '@/components/chunk-viewer';
 import { NoteEditor } from '@/components/note-editor';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Save,
   Video,
-  Loader2,
   LogOut,
   PlayCircle,
   Filter,
@@ -715,23 +715,15 @@ export function VideoNotesEditor() {
                 className='text-base'
               />
             </div>
-            <Button
+            <ActionButton
               onClick={handleFetchVideo}
               disabled={loading || !videoUrl.trim()}
-              className='w-[110px]'
+              loading={loading}
+              loadingText='Loading...'
+              icon={Video}
             >
-              {loading ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <Video className='mr-2 h-4 w-4' />
-                  Load YT
-                </>
-              )}
-            </Button>
+              Load YT
+            </ActionButton>
           </div>
 
           {/* Video Info Display */}
@@ -785,46 +777,24 @@ export function VideoNotesEditor() {
 
                 <div className='flex flex-col gap-2'>
                   <CustomTooltip content='Download and process video subtitles into chunks'>
-                    <Button
+                    <ActionButton
                       onClick={handleProcessSubtitles}
                       disabled={processingSubtitles}
-                      size='sm'
-                      variant='outline'
-                      className='w-[110px] justify-start'
+                      loading={processingSubtitles}
+                      icon={PlayCircle}
                     >
-                      {processingSubtitles ? (
-                        <>
-                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <PlayCircle className='mr-2 h-4 w-4' />
-                          Subtitles
-                        </>
-                      )}
-                    </Button>
+                      Subtitles
+                    </ActionButton>
                   </CustomTooltip>
                   <CustomTooltip content='Generate AI enrichment for all video chunks'>
-                    <Button
+                    <ActionButton
                       onClick={handleProcessAI}
                       disabled={!hasSubtitles || processingAI}
-                      size='sm'
-                      variant='default'
-                      className='w-[110px] justify-start'
+                      loading={processingAI}
+                      icon={PlayCircle}
                     >
-                      {processingAI ? (
-                        <>
-                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <PlayCircle className='mr-2 h-4 w-4' />
-                          AI
-                        </>
-                      )}
-                    </Button>
+                      AI
+                    </ActionButton>
                   </CustomTooltip>
                 </div>
               </div>
