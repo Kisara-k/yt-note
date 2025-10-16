@@ -455,6 +455,55 @@ export function ChunkViewer({
     }
   };
 
+  const handleUpdateChunkText = async (newContent: string) => {
+    if (!chunkDetails || !resourceId) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const endpoint = isBook
+        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/text`
+        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/text`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(
+          isBook ? { chapter_text: newContent } : { chunk_text: newContent }
+        ),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to update chunk text');
+      }
+
+      // Update local state with the new value
+      setChunkDetails((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          chunk_text: newContent,
+        };
+      });
+
+      toast.success('Chunk text updated successfully');
+    } catch (error) {
+      console.error('Update chunk text error:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to update chunk text'
+      );
+      throw error; // Re-throw so the component knows it failed
+    }
+  };
+
   const handleInitialLoad = useCallback(() => {
     setHasUnsavedChanges(false);
   }, []);
@@ -541,6 +590,7 @@ export function ChunkViewer({
             title={isBook ? 'Chapter Text' : 'Chunk Text'}
             content={chunkDetails?.chunk_text}
             height='h-48'
+            onUpdate={handleUpdateChunkText}
             isLoading={loading || loadingChunks}
             useMarkdown={false}
           />

@@ -43,7 +43,8 @@ from db.subtitle_chunks_crud import (
     get_chunk_index,
     get_chunk_details,
     load_chunks_text,
-    update_chunk_note
+    update_chunk_note,
+    update_chunk_text
 )
 from db.books_crud import (
     create_book,
@@ -665,6 +666,30 @@ async def update_ai_field_endpoint(
             'updated_chunk': result
         }
         
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/chunks/{video_id}/{chunk_id}/text")
+async def update_chunk_text_endpoint(
+    video_id: str,
+    chunk_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update chunk text content for a video chunk"""
+    try:
+        chunk_text = request.get("chunk_text")
+        if chunk_text is None:
+            raise HTTPException(status_code=400, detail="chunk_text is required")
+        
+        updated_chunk = update_chunk_text(video_id, chunk_id, chunk_text)
+        if not updated_chunk:
+            raise HTTPException(status_code=500, detail="Failed to update chunk text")
+        
+        return updated_chunk
     except HTTPException:
         raise
     except Exception as e:

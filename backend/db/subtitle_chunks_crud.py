@@ -210,6 +210,51 @@ def update_chunk_note(
         return None
 
 
+def update_chunk_text(
+    video_id: str,
+    chunk_id: int,
+    chunk_text: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Update chunk text content in storage
+    
+    Args:
+        video_id: YouTube video ID
+        chunk_id: Chunk identifier
+        chunk_text: New text content for the chunk
+        
+    Returns:
+        Updated chunk record or None on error
+    """
+    try:
+        # Get current chunk to get the text path
+        print(f"[DB->] SELECT subtitle_chunks WHERE video_id={video_id}, chunk_id={chunk_id}")
+        response = supabase.table("subtitle_chunks").select(
+            "chunk_text_path"
+        ).eq("video_id", video_id).eq("chunk_id", chunk_id).execute()
+        
+        if not response.data or len(response.data) == 0:
+            print(f"[DB!!] No chunk found: {video_id}/{chunk_id}")
+            return None
+        
+        # Upload new chunk text to storage (this will overwrite the existing file)
+        chunk_text_path = upload_chunk_text(video_id, chunk_id, chunk_text)
+        if not chunk_text_path:
+            print(f"[DB!!] Failed to upload updated chunk text to storage")
+            return None
+        
+        print(f"[DB->] Updated chunk text in storage for chunk {chunk_id}")
+        
+        # Return the updated chunk with text loaded
+        chunk = response.data[0]
+        chunk['chunk_text'] = chunk_text
+        return chunk
+            
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
 def get_chunks_by_video(video_id: str) -> List[Dict[str, Any]]:
     """
     Get all chunks for a video

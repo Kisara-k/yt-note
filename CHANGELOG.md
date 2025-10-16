@@ -2,6 +2,55 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-01-16] - Chunk/Chapter Text Editing Feature ✅
+
+### Added - Manual Editing for Chunk/Chapter Text
+
+Extended manual editing capability to chunk/chapter text fields for both YouTube videos and books, making all content fields consistently editable.
+
+- **Backend Enhancement**
+
+  - **New Function**: `update_chunk_text()` in `db/subtitle_chunks_crud.py`
+    - Updates chunk text in Supabase Storage
+    - Handles storage upload for new text content
+    - Returns updated chunk record with new text
+  - **New API Endpoint**: `PUT /api/chunks/{video_id}/{chunk_id}/text`
+    - Updates video chunk text content
+    - Request body: `{"chunk_text": "new content"}`
+    - Requires authentication
+    - Mirrors existing book chapter text endpoint structure
+  - **Existing Endpoint**: `PUT /api/book/{book_id}/chapter/{chapter_id}/text` (already available)
+    - Updates book chapter text content
+    - Request body: `{"chapter_text": "new content"}`
+
+- **Frontend Enhancement (`chunk-viewer.tsx`)**
+
+  - **Added**: `handleUpdateChunkText()` function
+    - Intelligently handles both book chapters and video chunks
+    - Calls appropriate endpoint based on content type
+    - Updates local state after successful save
+    - Shows toast notifications for success/error feedback
+  - **Updated**: Chunk/Chapter Text `AIFieldDisplay` component
+    - Added `onUpdate={handleUpdateChunkText}` prop
+    - Now shows edit button (pencil icon) for editing
+    - Includes save/cancel buttons during edit mode
+    - Inherits Ctrl+S keyboard shortcut for quick saving
+    - Shows unsaved changes indicator (\*) when modified
+
+- **Features Enabled**
+
+  - ✅ Edit chunk/chapter text inline with textarea
+  - ✅ Save with button click or Ctrl+S keyboard shortcut
+  - ✅ Visual indicator (\*) for unsaved changes
+  - ✅ Cancel button to revert changes
+  - ✅ Toast notifications for save status
+  - ✅ Works for both YouTube videos and books
+  - ✅ Text stored in Supabase Storage (consistent with existing architecture)
+  - ✅ All four content fields now editable (3 AI fields + chunk text)
+
+- **Testing**
+  - Created `test_chunk_text_update.py` for backend verification
+
 ## [2025-01-14] - AI Fields Manual Edit Feature ✅
 
 ### Added - Manual Editing for AI-Generated Fields
