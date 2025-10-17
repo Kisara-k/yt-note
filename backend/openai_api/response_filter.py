@@ -6,7 +6,39 @@ responses for AI fields before they are stored or returned to the frontend.
 """
 
 from typing import Optional
+import re
 
+def remove_unwanted_lines(text):
+
+    # If chatgpt starts with a conversational message, Remove first and last line
+    if not text.strip().startswith("#"):
+        lines = text.split('\n')
+        if len(lines) > 2:
+            lines = lines[1:-1]
+        text = '\n'.join(lines)
+
+    # Remove lines that contain '# Study Note'
+    lines = text.split('\n')
+    lines = [line for line in lines if '# Study Note' not in line]
+    text = '\n'.join(lines)
+
+    return text
+
+def replace_text(text):
+    text = re.sub(r'[ ]*\\\[', r'\n$$', text)
+    text = re.sub(r'[ ]*\\\]', r'$$\n', text)
+    text = re.sub(r'\\\( ?| ?\\\)', '$', text)
+    return text
+
+def clean(text):
+    text = remove_unwanted_lines(text)
+    text = replace_text(text)
+    # if text.startswith('#'):
+    #     text = '#' + text
+    # if text.startswith('## '):
+    #     text = '#' + text
+    # text = text.replace('\n#', '\n##').replace('\n## ', '\n### ')
+    return text.replace('\n---\n', '\n').replace('—', ' - ').strip()
 
 def filter_ai_response(response: str, field_name: Optional[str] = None) -> str:
     """
@@ -50,4 +82,4 @@ def filter_ai_response(response: str, field_name: Optional[str] = None) -> str:
     # - Logging for audit trails
     
     # For now, just return the string as-is
-    return response
+    return clean(response)

@@ -13,8 +13,9 @@ CHUNK_MIN_FINAL_WORDS = 3000    # Minimum words for final chunk (otherwise merge
 # ===================================================
 # OpenAI Configuration
 # ===================================================
-OPENAI_MODEL = "gpt-4.1-nano"
+OPENAI_MODEL = "gpt-4.1-mini"
 OPENAI_MAX_TOKENS_TITLE = 50
-OPENAI_MAX_TOKENS_OTHER = 200
-OPENAI_TEMPERATURE = 0.5
+OPENAI_MAX_TOKENS_OTHER = 2500
+OPENAI_TEMPERATURE = 0.3
+OPENAI_TOP_P = 0.3
 

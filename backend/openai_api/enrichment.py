@@ -62,16 +62,22 @@ def enrich_chunk(
         while retries <= max_retries:
             try:
                 response = client.chat.completions.create(
-                    model=model,
+                    # model='gpt-5-nano',
+                    # reasoning_effort="minimal",
+                    # max_completion_tokens=3000,
+                    # verbosity="low",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": prompt}
                     ],
+                    model=model,
                     max_tokens=max_tokens,
-                    temperature=temperature
+                    temperature=temperature,
+                    top_p=0.3
                 )
                 # Filter the AI response before returning
                 raw_content = response.choices[0].message.content.strip()
+                print(raw_content)
                 filtered_content = filter_ai_response(raw_content, field_name=field_name)
                 return field_name, filtered_content
                 

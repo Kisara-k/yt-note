@@ -43,26 +43,55 @@ Segment text:
 
 Generate only the title, no additional text.'''
 
-VIDEO_PROMPT_1 = '''Provide a high-level summary (2-3 sentences) of this video segment.
+VIDEO_PROMPT_1 = '''
+State all the KEY TESTABLE FACTS here, ignore all filler and common knowledge. You should use emojis in headings for clarity. Use between 5 - 10 topic headings as needed. Use this format for key facts.
 
-Segment text:
+### 1. [Emoji] [Fact-Topic]
+- [fact1]
+- [fact2]
+
+### 2. [Emoji] [Fact-Topic]
+- [fact1]
+- [fact2]
+- [fact3]
+
+content:
 {chunk_text}
+'''
 
-Focus on the main ideas and key takeaways.'''
+VIDEO_PROMPT_2 = '''
+Create a detailed, introductory understandable study note based on the following content, make sure it's well organized, ADD CONTENTT AND DETAIL, and is clear and detailed. Explain key concepts clearly and in words. Do not leave anything out that's in the content. Structured like a note, not just a list of points. Each section must have a clear, detailed IN WORD INTRODUCTION. Don't use overly academic tone.
 
-VIDEO_PROMPT_2 = '''List the key points discussed in this video segment as bullet points.
+Be VERY DETAILED in each of your explanations. Prefer clear, in-word explanations over brevity. You MUST use EMOJIs in main headings for clarity, and number main headings in this EXACT FORMAT:
+## 1. [Emoji] Heading
+Use between 3 - 10 main headings as needed. Use lists where needed. Don't use too many sub headings.
 
-Segment text:
+content:
 {chunk_text}
+'''
 
-Provide 3-5 bullet points, each focusing on a distinct idea or fact mentioned.'''
+VIDEO_PROMPT_3 = '''
+Write 10 multiple choice questions that comprehensively cover this topic (each question having ONE OR MORE CORRECT answer). DO NOT include the answers here. Make sure to cover all the key concepts and ideas in the content. Each question should be clear and concise. Include TRICKY and DIFFICULT questions. Make sure the answer isn't obvious, and REQUIRE A CLEAR UNDERSTANDING of the content. No need to say like "according to the content", as it is implied. Use the following EXACT FORMAT.
 
-VIDEO_PROMPT_3 = '''Identify the main topics or themes covered in this video segment.
+### X. [Question]
+A)
+B)
+C)
+D)
 
-Segment text:
+After writing all 10 questions, AT THE VERY END, for each question, clearly state the correct choices, and clearly state why each choice is correct or incorrect. Make sure to carefully consider each statement, its relation to the question, and the context of the lecture. Keep explanations brief but specific. Use the following EXACT FORMAT.
+
+### X. [Question]
+A) ✓/✗ [Short explanation]  
+B) ✓/✗ [Short explanation]  
+C) ✓/✗ [Short explanation]  
+D) ✓/✗ [Short explanation]
+
+**Correct:** P,Q
+
+content:
 {chunk_text}
-
-Provide a comma-separated list of 3-5 topics or themes.'''
+'''
 
 
 # ============================================================
