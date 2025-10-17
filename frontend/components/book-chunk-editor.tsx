@@ -497,7 +497,7 @@ export function BookChunkEditor({
                         <GripVertical className='h-4 w-4 text-muted-foreground cursor-move' />
                         <div className='flex-1'>
                           <div className='font-medium'>
-                            {chapter.chapter_id}. {chapter.chapter_title}
+                            {chapter.chapter_title}
                           </div>
                         </div>
 
