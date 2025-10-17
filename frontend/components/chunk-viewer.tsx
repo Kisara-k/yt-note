@@ -20,6 +20,7 @@ import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { NoteEditor } from '@/components/note-editor';
 import { API_BASE_URL } from '@/lib/config';
 import { AIFieldDisplay } from '@/components/ai-field-display';
+import { useAIPolling } from '@/lib/use-ai-polling';
 
 interface ChunkIndex {
   chunk_id: number;
@@ -70,6 +71,7 @@ export function ChunkViewer({
   );
   const { getAccessToken } = useAuth();
   const { showChunkText } = useSettings();
+  const { startPolling, stopPolling } = useAIPolling();
 
   const resourceId = isBook ? bookId : videoId;
 
@@ -304,43 +306,9 @@ export function ChunkViewer({
     [chunkDetails, initialLoadedContent]
   );
 
-  const loadChunkAIFields = async (chunkId: number) => {
-    if (!resourceId) return null;
-
-    try {
-      const token = await getAccessToken();
-      if (!token) return null;
-
-      // Use lightweight AI status endpoint for both books and videos (for polling)
-      const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapters/ai-status?chapter_id=${chunkId}`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/ai-status?chunk_id=${chunkId}`;
-
-      const response = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.error('Failed to load AI fields, status:', response.status);
-        return null;
-      }
-
-      const data = await response.json();
-
-      return {
-        short_title: isBook ? data.chapter_title : data.short_title,
-        ai_field_1: data.ai_field_1 || '',
-        ai_field_2: '', // Not returned by lightweight endpoint
-        ai_field_3: '', // Not returned by lightweight endpoint
-      };
-    } catch (error) {
-      console.error('Error loading AI fields:', error);
-      return null;
-    }
-  };
-
+  /**
+   * Load complete AI fields (used for refresh effect)
+   */
   const loadCompleteAIFields = async (chunkId: number) => {
     if (!resourceId) return null;
 
@@ -348,7 +316,6 @@ export function ChunkViewer({
       const token = await getAccessToken();
       if (!token) return null;
 
-      // Load complete AI fields after enrichment is detected
       const endpoint = isBook
         ? `${API_BASE_URL}/api/book/${resourceId}/chapters`
         : `${API_BASE_URL}/api/chunks/${resourceId}`;
@@ -373,21 +340,9 @@ export function ChunkViewer({
         : data.chunks?.find((ch: any) => ch.chunk_id === chunkId);
 
       if (!item) {
-        console.error('Item not found in list', {
-          chunkId,
-          totalItems: isBook ? data.chapters?.length : data.chunks?.length,
-          dataKeys: Object.keys(data),
-        });
+        console.error('Item not found in list');
         return null;
       }
-
-      console.log('Loaded complete AI fields:', {
-        chunkId,
-        short_title: isBook ? item.chapter_title : item.short_title,
-        ai_field_1: item.ai_field_1?.substring(0, 50) || '',
-        ai_field_2: item.ai_field_2?.substring(0, 50) || '',
-        ai_field_3: item.ai_field_3?.substring(0, 50) || '',
-      });
 
       return {
         short_title: isBook ? item.chapter_title : item.short_title,
@@ -401,49 +356,22 @@ export function ChunkViewer({
     }
   };
 
-  const checkChunkAIEnrichment = async (
-    chunkId: number,
-    previousData: { short_title?: string; ai_field_1?: string }
-  ) => {
-    const aiFields = await loadChunkAIFields(chunkId);
-    if (!aiFields) return false;
-
-    // Only consider it a change if the NEW value has actual content
-    // This prevents triggering on empty->empty or undefined->empty transitions
-    const titleChanged =
-      aiFields.short_title !== previousData.short_title &&
-      aiFields.short_title &&
-      aiFields.short_title.trim().length > 0;
-
-    const field1Changed =
-      aiFields.ai_field_1 !== previousData.ai_field_1 &&
-      aiFields.ai_field_1 &&
-      aiFields.ai_field_1.trim().length > 0;
-
-    const hasNewData = titleChanged || field1Changed;
-
-    console.log('Checking AI enrichment:', {
-      chunkId,
-      previousTitle: previousData.short_title?.substring(0, 30) || 'empty',
-      currentTitle: aiFields.short_title?.substring(0, 30) || 'empty',
-      previousField1: previousData.ai_field_1?.substring(0, 30) || 'empty',
-      currentField1: aiFields.ai_field_1?.substring(0, 30) || 'empty',
-      titleChanged,
-      field1Changed,
-      hasNewData,
-    });
-
-    return hasNewData ? aiFields : false;
-  };
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   const handleProcessChapterAI = async () => {
-    if (!chunkDetails) return;
+    if (!chunkDetails || !resourceId) return;
 
     setProcessingChapter(true);
     try {
       const token = await getAccessToken();
       if (!token) {
         toast.error('Authentication required');
+        setProcessingChapter(false);
         return;
       }
 
@@ -455,12 +383,12 @@ export function ChunkViewer({
         ? {
             book_id: resourceId,
             chapter_id: chunkDetails.chunk_id,
-            chapter_text: chunkDetails.chunk_text, // Pass chapter text to avoid backend loading
+            chapter_text: chunkDetails.chunk_text,
           }
         : {
             video_id: resourceId,
             chunk_id: chunkDetails.chunk_id,
-            chunk_text: chunkDetails.chunk_text, // Pass chunk text to avoid backend loading
+            chunk_text: chunkDetails.chunk_text,
           };
 
       const response = await fetch(endpoint, {
@@ -490,92 +418,54 @@ export function ChunkViewer({
 
       // Store the current AI fields to compare against
       const currentAIState = {
-        short_title: isBook
-          ? chunkDetails.short_title
-          : chunkDetails.short_title,
+        short_title: chunkDetails.short_title,
         ai_field_1: chunkDetails.ai_field_1,
       };
 
-      // Poll to check if AI enrichment is complete (both books and videos)
-      let pollCount = 0;
-      const maxPolls = 180; // 3 minutes (180 * 1 second)
-      let enrichmentComplete = false; // Flag to prevent duplicate processing
-      const pollInterval = setInterval(async () => {
-        if (enrichmentComplete) return; // Skip if already completed
+      // Start polling using the custom hook
+      startPolling({
+        resourceId,
+        chunkId: chunkDetails.chunk_id,
+        isBook,
+        initialState: currentAIState,
+        onComplete: (completeAIFields) => {
+          console.log('AI enrichment complete, updating UI...');
 
-        pollCount++;
-        const newAIFields = await checkChunkAIEnrichment(
-          chunkDetails.chunk_id,
-          currentAIState
-        );
-
-        // Check flag again after async operation completes (prevent race condition)
-        if (enrichmentComplete) return;
-
-        if (newAIFields) {
-          enrichmentComplete = true; // Set flag immediately
-          clearInterval(pollInterval);
-
-          // Wait a moment for the database write to complete
-          // The AI status endpoint might return before the full data is written
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Load complete AI fields (all fields, not just title and field_1)
-          const completeAIFields = await loadCompleteAIFields(
-            chunkDetails.chunk_id
+          // Update chunk details with complete AI fields
+          setChunkDetails((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  short_title: completeAIFields.short_title || prev.short_title,
+                  ai_field_1: completeAIFields.ai_field_1 || '',
+                  ai_field_2: completeAIFields.ai_field_2 || '',
+                  ai_field_3: completeAIFields.ai_field_3 || '',
+                }
+              : prev
           );
 
-          // Update with complete AI fields (only if successfully loaded)
-          if (completeAIFields) {
-            console.log('Updating chunk details with complete AI fields:', {
-              prev_ai_field_1:
-                chunkDetails.ai_field_1?.substring(0, 50) || 'empty',
-              new_ai_field_1:
-                completeAIFields.ai_field_1?.substring(0, 50) || 'empty',
-              new_ai_field_2:
-                completeAIFields.ai_field_2?.substring(0, 50) || 'empty',
-              new_ai_field_3:
-                completeAIFields.ai_field_3?.substring(0, 50) || 'empty',
-            });
-
-            setChunkDetails((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    short_title:
-                      completeAIFields.short_title || prev.short_title,
-                    ai_field_1: completeAIFields.ai_field_1 || '',
-                    ai_field_2: completeAIFields.ai_field_2 || '',
-                    ai_field_3: completeAIFields.ai_field_3 || '',
-                  }
-                : prev
-            );
-          } else {
-            console.error(
-              'completeAIFields is null, not updating chunk details'
-            );
-          }
           // Reload chunk index to update titles in the dropdown
-          // This is now safe because we fixed the useEffect dependencies to prevent cascade
           loadChunkIndex();
           setProcessingChapter(false);
           toast.success(
             `${isBook ? 'Chapter' : 'Chunk'} AI enrichment complete!`
           );
-          console.log(
-            `${isBook ? 'Chapter' : 'Chunk'} AI enrichment complete!`
-          );
-        } else if (pollCount >= maxPolls) {
-          clearInterval(pollInterval);
+        },
+        onTimeout: () => {
+          console.log('AI enrichment timeout');
           setProcessingChapter(false);
           toast.info(
             'AI enrichment is taking longer than expected. Manually refresh to see updates.'
           );
-          console.log(
-            'AI enrichment timeout - manually refresh to see updates'
-          );
-        }
-      }, 1000);
+        },
+        onError: (error) => {
+          console.error('AI enrichment polling error:', error);
+          setProcessingChapter(false);
+          toast.error('Failed to check AI enrichment status');
+        },
+        maxPolls: 180, // 3 minutes
+        pollInterval: 1000, // 1 second
+      });
     } catch (error) {
       console.error('AI enrichment error:', error);
       toast.error(

@@ -27,6 +27,8 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CustomTooltip } from '@/components/custom-tooltip';
+import { useBulkAIPolling } from '@/lib/use-bulk-ai-polling';
+import { toast } from 'sonner';
 
 type ContentType = 'video' | 'book';
 
@@ -87,6 +89,15 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
   const { user, signOut, getAccessToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { startPolling: startBulkPolling, stopPolling: stopBulkPolling } =
+    useBulkAIPolling();
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopBulkPolling();
+    };
+  }, [stopBulkPolling]);
 
   // Load content from URL parameter or localStorage on mount
   useEffect(() => {
@@ -381,12 +392,14 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
     }
   };
 
+  /**
+   * Load all chunks/chapters AI fields snapshot for comparison
+   */
   const loadAllChunksAIFields = async (id: string) => {
     try {
       const token = await getAccessToken();
       if (!token) return null;
 
-      // Use lightweight AI status endpoint for polling
       const endpoint = isVideo
         ? `http://localhost:8000/api/chunks/${id}/ai-status`
         : `http://localhost:8000/api/book/${id}/chapters/ai-status`;
@@ -401,19 +414,18 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
         const data = await response.json();
         const items = isVideo ? data.chunks : data.chapters;
         if (items && items.length > 0) {
-          return items.map((item: any) =>
-            isVideo
-              ? {
-                  chunk_id: item.chunk_id,
-                  short_title: item.short_title || '',
-                  ai_field_1: item.ai_field_1 || '',
-                }
-              : {
-                  chapter_id: item.chapter_id,
-                  chapter_title: item.chapter_title || '',
-                  ai_field_1: item.ai_field_1 || '',
-                }
-          );
+          // Create snapshot in the format expected by the polling hook
+          const snapshot: {
+            [key: number]: { short_title?: string; ai_field_1?: string };
+          } = {};
+          items.forEach((item: any) => {
+            const id = isVideo ? item.chunk_id : item.chapter_id;
+            snapshot[id] = {
+              short_title: isVideo ? item.short_title : item.chapter_title,
+              ai_field_1: item.ai_field_1 || '',
+            };
+          });
+          return snapshot;
         }
       }
       return null;
@@ -423,49 +435,21 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
     }
   };
 
-  const checkAIEnrichment = async (
-    id: string,
-    previousData?: Array<{
-      chunk_id?: number;
-      chapter_id?: number;
-      short_title?: string;
-      chapter_title?: string;
-      ai_field_1: string;
-    }>
-  ) => {
-    const currentData = await loadAllChunksAIFields(id);
-    if (!currentData || currentData.length === 0) return false;
-
-    if (!previousData) {
-      return currentData.some((item: any) =>
-        isVideo
-          ? item.short_title || item.ai_field_1
-          : item.chapter_title || item.ai_field_1
-      );
-    }
-
-    const hasNewData = currentData.some((current: any) => {
-      const idKey = isVideo ? 'chunk_id' : 'chapter_id';
-      const titleKey = isVideo ? 'short_title' : 'chapter_title';
-      const previous = previousData.find((p) => p[idKey] === current[idKey]);
-      if (!previous) return false;
-      return (
-        current[titleKey] !== previous[titleKey] ||
-        current.ai_field_1 !== previous.ai_field_1
-      );
-    });
-
-    return hasNewData;
-  };
-
   const handleProcessSubtitles = async () => {
     if (!contentInfo || !isVideo) return;
 
     setProcessingSubtitles(true);
     setHasSubtitles(false);
+
+    let pollInterval: NodeJS.Timeout | null = null;
+    let isMounted = true;
+
     try {
       const token = await getAccessToken();
-      if (!token) return;
+      if (!token) {
+        setProcessingSubtitles(false);
+        return;
+      }
 
       const videoId = (contentInfo as VideoInfo).video_id;
       const response = await fetch(
@@ -486,30 +470,49 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
       const result = await response.json();
       console.log('Subtitle processing started:', result);
+      toast.success('Subtitle processing started!');
 
       let pollCount = 0;
-      const maxPolls = 40;
+      const maxPolls = 40; // 2 minutes (40 * 3 seconds)
 
-      const pollInterval = setInterval(async () => {
+      pollInterval = setInterval(async () => {
+        if (!isMounted) {
+          if (pollInterval) clearInterval(pollInterval);
+          return;
+        }
+
         pollCount++;
         const result = await checkSubtitles(videoId);
 
         if (result.hasChunks && result.count > 0) {
-          clearInterval(pollInterval);
-          setProcessingSubtitles(false);
-          console.log(
-            `Subtitles processed successfully! ${result.count} chunks created.`
-          );
-          chunkViewerKey.current += 1;
+          if (pollInterval) clearInterval(pollInterval);
+          if (isMounted) {
+            setProcessingSubtitles(false);
+            toast.success(
+              `Subtitles processed successfully! ${result.count} chunks created.`
+            );
+            chunkViewerKey.current += 1;
+          }
         } else if (pollCount >= maxPolls) {
-          clearInterval(pollInterval);
-          setProcessingSubtitles(false);
-          console.log('Subtitle processing timeout');
+          if (pollInterval) clearInterval(pollInterval);
+          if (isMounted) {
+            setProcessingSubtitles(false);
+            toast.info('Subtitle processing timeout. Please try again.');
+          }
         }
       }, 3000);
+
+      // Cleanup function
+      return () => {
+        isMounted = false;
+        if (pollInterval) clearInterval(pollInterval);
+      };
     } catch (error) {
       console.error('Subtitle processing error:', error);
+      toast.error('Failed to process subtitles');
       setProcessingSubtitles(false);
+
+      if (pollInterval) clearInterval(pollInterval);
     }
   };
 
@@ -519,7 +522,11 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
     setProcessingAI(true);
     try {
       const token = await getAccessToken();
-      if (!token) return;
+      if (!token) {
+        setProcessingAI(false);
+        toast.error('Authentication required');
+        return;
+      }
 
       const id = isVideo
         ? (contentInfo as VideoInfo).video_id
@@ -547,40 +554,44 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
       const result = await response.json();
       console.log('AI enrichment started:', result);
+      toast.success(
+        `AI enrichment started for all ${isVideo ? 'chunks' : 'chapters'}!`
+      );
 
+      // Get current AI state for comparison
       const currentAIState = await loadAllChunksAIFields(id);
 
-      let pollCount = 0;
-      const maxPolls = 180;
-      let enrichmentComplete = false; // Flag to prevent duplicate processing
-      const pollInterval = setInterval(async () => {
-        if (enrichmentComplete) return; // Skip if already completed
-
-        pollCount++;
-        const hasAIEnrichment = await checkAIEnrichment(
-          id,
-          currentAIState || undefined
-        );
-
-        // Check flag again after async operation completes (prevent race condition)
-        if (enrichmentComplete) return;
-
-        if (hasAIEnrichment) {
-          enrichmentComplete = true; // Set flag immediately
-          clearInterval(pollInterval);
+      // Start polling using the custom hook
+      startBulkPolling({
+        resourceId: id,
+        isBook: !isVideo,
+        initialState: currentAIState || undefined,
+        onComplete: () => {
+          console.log('Bulk AI enrichment complete!');
           setProcessingAI(false);
           setRefreshAIFields((prev) => prev + 1);
-          console.log('AI enrichment complete!');
-        } else if (pollCount >= maxPolls) {
-          clearInterval(pollInterval);
+          toast.success('AI enrichment complete for all items!');
+        },
+        onTimeout: () => {
+          console.log('Bulk AI enrichment timeout');
           setProcessingAI(false);
-          console.log(
-            'AI enrichment timeout - manually refresh to see updates'
+          toast.info(
+            'AI enrichment is taking longer than expected. Manually refresh to see updates.'
           );
-        }
-      }, 1000);
+        },
+        onError: (error) => {
+          console.error('Bulk AI enrichment polling error:', error);
+          setProcessingAI(false);
+          toast.error('Failed to check AI enrichment status');
+        },
+        maxPolls: 180, // 3 minutes
+        pollInterval: 1000, // 1 second
+      });
     } catch (error) {
       console.error('AI enrichment error:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to start AI enrichment'
+      );
       setProcessingAI(false);
     }
   };

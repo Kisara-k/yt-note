@@ -2,6 +2,103 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-10-17] - AI Polling Fix: Complete Fields Loading 🔧
+
+### Fixed - UI Not Updating After AI Completion
+
+**Resolved critical bug where UI didn't update with AI-generated content**
+
+#### Problem
+
+- Backend successfully completed AI enrichment (logs showed completion)
+- Frontend detected enrichment but failed to load complete AI fields
+- Error: `[useAIPolling] Failed to load complete fields`
+- Users had to manually refresh page to see new content
+
+#### Root Cause
+
+- `AbortController` was being reused for sequential fetch requests
+- Same signal used for both AI status check AND complete fields fetch
+- After 500ms delay, controller was in inconsistent state
+- Second fetch would fail silently
+
+#### Solution
+
+- Create **fresh `AbortController`** for complete fields fetch
+- Added mount check after async delay
+- Enhanced logging for better debugging
+- Each fetch operation gets its own abort controller
+
+#### Changes
+
+- `use-ai-polling.ts`:
+  - ✅ Fresh AbortController for loadCompleteAIFields
+  - ✅ Added mount check after 500ms delay
+  - ✅ Enhanced logging for debugging
+  - ✅ Better error messages with response validation
+
+#### Impact
+
+- ✅ UI now updates automatically after AI completion
+- ✅ No more manual refresh needed
+- ✅ Proper error handling and logging
+- ✅ Follows AbortController best practices
+
+#### Documentation
+
+- Created `POLLING_FIX_COMPLETE_FIELDS.md` - Detailed fix explanation
+
+## [2025-10-17] - AI Polling Refactoring 🔄
+
+### Fixed - Critical Memory Leaks & Stuck Polling
+
+**Implemented proper cleanup and shared polling logic for AI enrichment**
+
+#### Problems Solved
+
+- ❌ **Memory Leaks**: setInterval never cleaned up on component unmount
+- ❌ **Stuck Polling**: Polling continued after page reload, blocking content load
+- ❌ **No Cancellation**: Fetch requests couldn't be aborted
+- ❌ **Race Conditions**: Multiple async operations without synchronization
+- ❌ **Spaghetti Code**: Polling logic tightly coupled with UI
+- ❌ **Code Duplication**: Separate implementations for books and videos
+
+#### Solution - Custom Polling Hooks
+
+- **Frontend - New Polling System**
+
+  - ✅ Created `use-ai-polling.ts` - Single chunk/chapter polling hook
+  - ✅ Created `use-bulk-ai-polling.ts` - Bulk (all items) polling hook
+  - ✅ Shared implementation for books AND videos
+  - ✅ Proper cleanup with useEffect return functions
+  - ✅ AbortController for request cancellation
+  - ✅ Mount tracking prevents state updates after unmount
+
+- **Components Updated**
+
+  - `chunk-viewer.tsx`: Refactored to use `useAIPolling` hook
+
+    - Removed ~150 lines of inline polling logic
+    - Added cleanup effect
+    - Simplified AI processing handlers
+
+  - `content-notes-editor.tsx`: Refactored to use `useBulkAIPolling` hook
+    - Fixed bulk AI enrichment polling
+    - Fixed subtitle processing polling
+    - Added cleanup effects
+
+#### Benefits
+
+- 🚀 **Performance**: No memory leaks, cancelled in-flight requests
+- 🧹 **Code Quality**: ~300 lines of duplicate code removed
+- 🛡️ **Reliability**: No stuck polling, graceful error handling
+- 🔄 **Consistency**: Books and videos behave identically
+
+#### Documentation
+
+- Created `POLLING_REFACTOR_SUMMARY.md` - Comprehensive implementation guide
+- Includes testing checklist and migration notes
+
 ## [2025-10-17] - AI Response Filter Implementation 🎯
 
 ### Added - Centralized AI Response Filtering

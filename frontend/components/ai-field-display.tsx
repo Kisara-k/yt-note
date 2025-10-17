@@ -26,7 +26,7 @@ interface AIFieldDisplayProps {
 export function AIFieldDisplay({
   title,
   content,
-  height = 'h-64',
+  height = 'h-80',
   onRegenerate,
   onUpdate,
   isRegenerating = false,
