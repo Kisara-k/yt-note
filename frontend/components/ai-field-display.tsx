@@ -174,12 +174,109 @@ export function AIFieldDisplay({
             disabled={isSaving}
           />
         ) : (
-          <div className='text-xs prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-p:text-xs prose-headings:my-1 prose-headings:text-xs prose-ul:my-1 prose-ul:text-xs prose-ol:my-1 prose-ol:text-xs prose-li:my-0.5 prose-li:text-xs prose-strong:text-xs prose-em:text-xs'>
+          <div className='text-xs'>
             {content ? (
               useMarkdown ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeKatex]}
+                  components={{
+                    h1: ({ node, ...props }) => (
+                      <h1
+                        className='text-base font-medium mt-3 mb-2 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    h2: ({ node, ...props }) => (
+                      <h2
+                        className='text-sm font-medium mt-2.5 mb-1.5 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    h3: ({ node, ...props }) => (
+                      <h3
+                        className='text-xs font-medium mt-2 mb-1 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    h4: ({ node, ...props }) => (
+                      <h4
+                        className='text-xs font-semibold mt-2 mb-1 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    h5: ({ node, ...props }) => (
+                      <h5
+                        className='text-xs font-semibold mt-1.5 mb-0.5 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    h6: ({ node, ...props }) => (
+                      <h6
+                        className='text-xs font-semibold mt-1.5 mb-0.5 first:mt-0'
+                        {...props}
+                      />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p className='text-xs my-1 leading-relaxed' {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className='text-xs my-1 ml-4 list-disc' {...props} />
+                    ),
+                    ol: ({ node, ...props }) => (
+                      <ol
+                        className='text-xs my-1 ml-4 list-decimal'
+                        {...props}
+                      />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className='text-xs my-0.5' {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className='font-bold' {...props} />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em className='italic' {...props} />
+                    ),
+                    code: ({ node, className, ...props }) => {
+                      const isInline = !className?.includes('language-');
+                      return isInline ? (
+                        <code
+                          className='text-xs bg-muted px-1 py-0.5 rounded font-mono'
+                          {...props}
+                        />
+                      ) : (
+                        <code
+                          className={`text-xs font-mono ${className || ''}`}
+                          {...props}
+                        />
+                      );
+                    },
+                    pre: ({ node, ...props }) => (
+                      <pre
+                        className='text-xs bg-muted p-2 rounded my-2 overflow-x-auto'
+                        {...props}
+                      />
+                    ),
+                    blockquote: ({ node, ...props }) => (
+                      <blockquote
+                        className='text-xs border-l-2 border-gray-300 dark:border-gray-700 pl-3 my-2 italic'
+                        {...props}
+                      />
+                    ),
+                    a: ({ node, ...props }) => (
+                      <a
+                        className='text-xs text-blue-500 hover:underline'
+                        {...props}
+                      />
+                    ),
+                    hr: ({ node, ...props }) => (
+                      <hr
+                        className='my-2 border-gray-300 dark:border-gray-700'
+                        {...props}
+                      />
+                    ),
+                  }}
                 >
                   {content}
                 </ReactMarkdown>
