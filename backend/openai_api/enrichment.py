@@ -8,6 +8,7 @@ import time
 from typing import Dict, Any
 from dotenv import load_dotenv
 from .response_filter import filter_ai_response
+from prompts import SYSTEM_PROMPT
 
 load_dotenv()
 
@@ -62,7 +63,10 @@ def enrich_chunk(
             try:
                 response = client.chat.completions.create(
                     model=model,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ],
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
