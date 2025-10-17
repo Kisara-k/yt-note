@@ -7,6 +7,7 @@ import os
 import time
 from typing import Dict, Any
 from dotenv import load_dotenv
+from .response_filter import filter_ai_response
 
 load_dotenv()
 
@@ -65,7 +66,10 @@ def enrich_chunk(
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
-                return field_name, response.choices[0].message.content.strip()
+                # Filter the AI response before returning
+                raw_content = response.choices[0].message.content.strip()
+                filtered_content = filter_ai_response(raw_content, field_name=field_name)
+                return field_name, filtered_content
                 
             except RateLimitError as e:
                 retries += 1

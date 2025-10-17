@@ -49,6 +49,9 @@ from db.subtitle_chunks_crud import (
     update_chunk_note,
     update_chunk_text
 )
+
+# Import AI response filter
+from openai_api.response_filter import filter_ai_response
 from db.books_crud import (
     create_book,
     get_book_by_id,
@@ -823,6 +826,9 @@ async def update_ai_field_endpoint(
         if field_value is None:
             raise HTTPException(status_code=400, detail="field_value is required")
         
+        # Filter the user-provided value through the AI response filter
+        filtered_value = filter_ai_response(field_value, field_name=field_name)
+        
         # Map field names to update_chunk_ai_fields parameters
         kwargs = {
             'video_id': video_id,
@@ -830,13 +836,13 @@ async def update_ai_field_endpoint(
         }
         
         if field_name == 'title':
-            kwargs['short_title'] = field_value
+            kwargs['short_title'] = filtered_value
         elif field_name == 'field_1':
-            kwargs['ai_field_1'] = field_value
+            kwargs['ai_field_1'] = filtered_value
         elif field_name == 'field_2':
-            kwargs['ai_field_2'] = field_value
+            kwargs['ai_field_2'] = filtered_value
         elif field_name == 'field_3':
-            kwargs['ai_field_3'] = field_value
+            kwargs['ai_field_3'] = filtered_value
         
         result = update_chunk_ai_fields(**kwargs)
         
@@ -1349,6 +1355,9 @@ async def update_book_chapter_ai_field_endpoint(
         if field_value is None:
             raise HTTPException(status_code=400, detail="field_value is required")
         
+        # Filter the user-provided value through the AI response filter
+        filtered_value = filter_ai_response(field_value, field_name=field_name)
+        
         # Map field names to update_chapter_ai_fields parameters
         kwargs = {
             'book_id': book_id,
@@ -1356,11 +1365,11 @@ async def update_book_chapter_ai_field_endpoint(
         }
         
         if field_name == 'field_1':
-            kwargs['ai_field_1'] = field_value
+            kwargs['ai_field_1'] = filtered_value
         elif field_name == 'field_2':
-            kwargs['ai_field_2'] = field_value
+            kwargs['ai_field_2'] = filtered_value
         elif field_name == 'field_3':
-            kwargs['ai_field_3'] = field_value
+            kwargs['ai_field_3'] = filtered_value
         
         result = update_chapter_ai_fields(**kwargs)
         
