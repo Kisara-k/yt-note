@@ -51,6 +51,7 @@ interface BookInfo {
   isbn?: string;
   description?: string;
   tags?: string[];
+  type?: string;
   created_at?: string;
 }
 
@@ -841,6 +842,19 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
                         </>
                       ) : (
                         <>
+                          {(contentInfo as BookInfo).type && (
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                (contentInfo as BookInfo).type === 'lecture'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              }`}
+                            >
+                              {(contentInfo as BookInfo).type === 'lecture'
+                                ? '📚 Lecture'
+                                : '📖 Book'}
+                            </span>
+                          )}
                           {(contentInfo as BookInfo).author && (
                             <span>by {(contentInfo as BookInfo).author}</span>
                           )}

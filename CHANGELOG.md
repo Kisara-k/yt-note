@@ -2,6 +2,61 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-01-17] - Book Type Feature ✅
+
+### Added - Book Type Classification with AI Prompt Customization
+
+Added a "type" field to books that allows distinguishing between different content types (e.g., 'book', 'lecture'), with each type using specialized AI prompts for content analysis.
+
+- **Database Schema**
+
+  - Added `type VARCHAR(50) DEFAULT 'book'` column to `books` table
+  - Created migration script: `add_book_type_migration.sql`
+  - Default value: 'book' for all existing and new books
+
+- **Backend - AI Prompt Sets** (`backend/prompts.py`)
+
+  - Added `LECTURE_PROMPTS` - specialized prompts for lecture content:
+    - Lecture Summary (concepts, explanations, demonstrations)
+    - Technical Concepts (formulas, theorems, definitions)
+    - Learning Objectives (key points students should remember)
+  - Updated prompt selection to choose appropriate set based on book type
+  - Type 'lecture' → lecture prompts; Type 'book'/empty/unknown → book prompts
+
+- **Backend - API & CRUD**
+
+  - `BookRequest` model: Added optional `book_type` field
+  - `create_book()`: Accepts `book_type` parameter (defaults to 'book')
+  - Orchestrator: Loads book metadata to determine which prompts to use during AI enrichment
+
+- **Frontend - Book Upload** (`book-add.tsx`)
+
+  - Added Type dropdown selector (Book / Lecture)
+  - Located between Author and Description fields
+  - Default selection: Book
+  - Includes help text explaining feature
+
+- **Frontend - Book Filter & Display** (`book-filter.tsx`)
+
+  - Added Type filter dropdown (All Types / Book / Lecture)
+  - Added Type column to books table with color-coded badges:
+    - 📖 Book (green badge)
+    - 📚 Lecture (blue badge)
+  - Filters books by selected type
+  - Clear Filters button resets type to "All Types"
+
+- **Frontend - Content Notes Editor** (`content-notes-editor.tsx`)
+
+  - Type badge displays in book info section when book is loaded
+  - Same color-coded design as book filter page
+
+- **Benefits**
+  - ✅ Different AI prompts optimized for each content type
+  - ✅ Easy filtering by content type in book list
+  - ✅ Visual indicators (badges) for quick identification
+  - ✅ Backward compatible (existing books default to 'book')
+  - ✅ Extensible for future content types
+
 ## [2025-01-16] - Chunk/Chapter Text Editing Feature ✅
 
 ### Added - Manual Editing for Chunk/Chapter Text

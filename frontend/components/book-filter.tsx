@@ -22,6 +22,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Loader2,
   Filter,
   X,
@@ -41,6 +48,7 @@ interface BookInfo {
   publisher: string;
   publication_year: number;
   tags: string[];
+  type: string;
   created_at: string;
 }
 
@@ -61,6 +69,7 @@ export function BookFilter() {
   const [filters, setFilters] = useState({
     author: '',
     title: '',
+    type: 'all' as 'all' | 'book' | 'lecture',
     selectedTags: [] as string[],
   });
   const { getAccessToken } = useAuth();
@@ -110,6 +119,7 @@ export function BookFilter() {
     setFilters({
       author: '',
       title: '',
+      type: 'all',
       selectedTags: [],
     });
   };
@@ -206,6 +216,10 @@ export function BookFilter() {
       );
     }
 
+    if (filters.type !== 'all') {
+      result = result.filter((book) => book.type === filters.type);
+    }
+
     if (filters.selectedTags.length > 0) {
       result = result.filter((book) =>
         filters.selectedTags.some((tag) => book.tags?.includes(tag))
@@ -245,7 +259,7 @@ export function BookFilter() {
         <Card>
           <CardContent className='pt-6 pb-4'>
             <div className='grid grid-cols-1 md:grid-cols-12 gap-3 items-end'>
-              <div className='md:col-span-5'>
+              <div className='md:col-span-4'>
                 <Label htmlFor='title' className='text-xs font-medium mb-1.5'>
                   Title
                 </Label>
@@ -260,7 +274,7 @@ export function BookFilter() {
                 />
               </div>
 
-              <div className='md:col-span-5'>
+              <div className='md:col-span-3'>
                 <Label htmlFor='author' className='text-xs font-medium mb-1.5'>
                   Author
                 </Label>
@@ -275,7 +289,28 @@ export function BookFilter() {
                 />
               </div>
 
-              <div className='md:col-span-1 flex justify-end'>
+              <div className='md:col-span-2'>
+                <Label htmlFor='type' className='text-xs font-medium mb-1.5'>
+                  Type
+                </Label>
+                <Select
+                  value={filters.type}
+                  onValueChange={(value: 'all' | 'book' | 'lecture') =>
+                    setFilters((prev) => ({ ...prev, type: value }))
+                  }
+                >
+                  <SelectTrigger id='type' className='h-9 w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>All Types</SelectItem>
+                    <SelectItem value='book'>Book</SelectItem>
+                    <SelectItem value='lecture'>Lecture</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className='md:col-span-2 flex justify-end'>
                 <Button
                   variant='ghost'
                   size='sm'
@@ -304,7 +339,7 @@ export function BookFilter() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className='w-[40%]'>
+                    <TableHead className='w-[30%]'>
                       <Button
                         variant='ghost'
                         size='sm'
@@ -315,7 +350,7 @@ export function BookFilter() {
                         {getSortIcon('title')}
                       </Button>
                     </TableHead>
-                    <TableHead className='w-[20%]'>
+                    <TableHead className='w-[15%]'>
                       <Button
                         variant='ghost'
                         size='sm'
@@ -326,6 +361,7 @@ export function BookFilter() {
                         {getSortIcon('author')}
                       </Button>
                     </TableHead>
+                    <TableHead className='w-[10%]'>Type</TableHead>
                     <TableHead className='w-[10%]'>
                       <Button
                         variant='ghost'
@@ -337,7 +373,7 @@ export function BookFilter() {
                         {getSortIcon('publication_year')}
                       </Button>
                     </TableHead>
-                    <TableHead className='w-[20%]'>Tags</TableHead>
+                    <TableHead className='w-[15%]'>Tags</TableHead>
                     <TableHead className='w-[15%]'>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -354,6 +390,17 @@ export function BookFilter() {
                       </TableCell>
                       <TableCell className='py-2'>
                         {book.author || '-'}
+                      </TableCell>
+                      <TableCell className='py-2'>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            book.type === 'lecture'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          }`}
+                        >
+                          {book.type === 'lecture' ? '📚 Lecture' : '📖 Book'}
+                        </span>
                       </TableCell>
                       <TableCell className='py-2'>
                         {book.publication_year || '-'}

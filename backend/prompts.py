@@ -67,6 +67,33 @@ Provide 3-5 actionable insights or important lessons that a reader should rememb
 
 
 # ============================================================
+# LECTURE PROMPTS - Raw Text Templates
+# ============================================================
+# Note: No LECTURE_PROMPT_TITLE - it's not saved to DB (chapter_title already exists)
+
+LECTURE_PROMPT_1 = '''Provide a concise summary (2-3 sentences) of this lecture section.
+
+Lecture section:
+{chunk_text}
+
+Focus on the main concepts, explanations, or demonstrations covered.'''
+
+LECTURE_PROMPT_2 = '''Identify and list the important formulas, theorems, definitions, or technical concepts presented in this lecture section.
+
+Lecture section:
+{chunk_text}
+
+List 3-5 key technical items as bullet points, with brief explanations where relevant.'''
+
+LECTURE_PROMPT_3 = '''Extract the key learning objectives and important points that students should remember from this lecture section.
+
+Lecture section:
+{chunk_text}
+
+Provide 3-5 critical learning points or concepts that are essential to understand.'''
+
+
+# ============================================================
 # Structured Prompt Configurations
 # ============================================================
 
@@ -113,9 +140,47 @@ BOOK_PROMPTS = {
     }
 }
 
+# AI Prompts for lecture content enrichment
+LECTURE_PROMPTS = {
+    'ai_field_1': {
+        'label': 'Lecture Summary',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': LECTURE_PROMPT_1
+    },
+    'ai_field_2': {
+        'label': 'Technical Concepts',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': LECTURE_PROMPT_2
+    },
+    'ai_field_3': {
+        'label': 'Learning Objectives',
+        'max_tokens': OPENAI_MAX_TOKENS_OTHER,
+        'template': LECTURE_PROMPT_3
+    }
+}
+
 
 # Legacy reference - defaults to video prompts for backward compatibility
 PROMPTS = VIDEO_PROMPTS
+
+
+def _get_prompt_set(content_type: str) -> dict:
+    """
+    Get the appropriate prompt set based on content type.
+    
+    Args:
+        content_type: 'video', 'book', 'lecture', or other value
+        
+    Returns:
+        Appropriate prompt dictionary
+    """
+    if content_type == 'lecture':
+        return LECTURE_PROMPTS
+    elif content_type == 'book':
+        return BOOK_PROMPTS
+    else:
+        # Default to video prompts for unknown types
+        return VIDEO_PROMPTS
 
 
 def get_prompt(field_name: str, chunk_text: str, content_type: str = 'video') -> str:
@@ -124,9 +189,9 @@ def get_prompt(field_name: str, chunk_text: str, content_type: str = 'video') ->
     Args:
         field_name: Name of the field (short_title, ai_field_1, ai_field_2, ai_field_3)
         chunk_text: The text content to process
-        content_type: Either 'video' or 'book' to determine which prompt set to use
+        content_type: 'video', 'book', 'lecture', or other (defaults to video)
     """
-    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    prompts = _get_prompt_set(content_type)
     
     if field_name not in prompts:
         raise ValueError(f"Unknown field name: {field_name}")
@@ -137,12 +202,12 @@ def get_all_prompts(content_type: str = 'video') -> dict:
     """Get all prompt templates as a flat dict
     
     Args:
-        content_type: Either 'video' or 'book' to determine which prompt set to use
+        content_type: 'video', 'book', 'lecture', or other (defaults to video)
     
     Returns:
         Dict with keys: title (video only), field_1, field_2, field_3
     """
-    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    prompts = _get_prompt_set(content_type)
     
     result = {
         'field_1': prompts['ai_field_1']['template'],
@@ -150,7 +215,7 @@ def get_all_prompts(content_type: str = 'video') -> dict:
         'field_3': prompts['ai_field_3']['template']
     }
     
-    # Only include title for videos (books don't save it)
+    # Only include title for videos (books/lectures don't save it)
     if content_type == 'video' and 'short_title' in prompts:
         result['title'] = prompts['short_title']['template']
     
@@ -162,9 +227,9 @@ def get_prompt_label(field_name: str, content_type: str = 'video') -> str:
     
     Args:
         field_name: Name of the field
-        content_type: Either 'video' or 'book' to determine which prompt set to use
+        content_type: 'video', 'book', 'lecture', or other (defaults to video)
     """
-    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    prompts = _get_prompt_set(content_type)
     
     if field_name not in prompts:
         return field_name
@@ -176,9 +241,9 @@ def get_max_tokens(field_name: str, content_type: str = 'video') -> int:
     
     Args:
         field_name: Name of the field
-        content_type: Either 'video' or 'book' to determine which prompt set to use
+        content_type: 'video', 'book', 'lecture', or other (defaults to video)
     """
-    prompts = BOOK_PROMPTS if content_type == 'book' else VIDEO_PROMPTS
+    prompts = _get_prompt_set(content_type)
     
     if field_name not in prompts:
         return OPENAI_MAX_TOKENS_OTHER

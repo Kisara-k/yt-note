@@ -375,13 +375,25 @@ def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int, chapter_te
     print(f"{'='*70}\n", flush=True)
     
     try:
-        # Step 1: Get chapter text
+        # Step 1: Get book type to determine which prompts to use
+        print("[1/4] Loading book metadata...", flush=True)
+        from db.books_crud import get_book_by_id
+        book = get_book_by_id(book_id)
+        
+        if not book:
+            print(f"Book not found: {book_id}", flush=True)
+            return False
+            
+        book_type = book.get('type', 'book')
+        print(f"Book type: {book_type}\n", flush=True)
+        
+        # Step 2: Get chapter text
         if chapter_text and chapter_text.strip():
-            print("[1/3] Using provided chapter text (no database load needed)...", flush=True)
+            print("[2/4] Using provided chapter text (no database load needed)...", flush=True)
             text_to_enrich = chapter_text
             print(f"Using provided text ({len(text_to_enrich)} characters)\n", flush=True)
         else:
-            print("[1/3] Loading chapter from database...", flush=True)
+            print("[2/4] Loading chapter from database...", flush=True)
             from db.book_chapters_crud import get_chapter_details
             chapter = get_chapter_details(book_id, chapter_id)
             
@@ -396,12 +408,15 @@ def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int, chapter_te
             print(f"Found chapter: {chapter.get('chapter_title', 'Untitled')}\n", flush=True)
             text_to_enrich = chapter['chapter_text']
         
-        # Step 2: Enrich with AI
-        print("[2/3] Enriching chapter with AI...", flush=True)
+        # Step 3: Enrich with AI
+        print("[3/4] Enriching chapter with AI...", flush=True)
         
-        # Get book prompts
+        # Get appropriate prompts based on book type
         from prompts import get_all_prompts
-        prompts = get_all_prompts(content_type='book')
+        # Use book_type if it's 'lecture', otherwise default to 'book'
+        content_type = book_type if book_type == 'lecture' else 'book'
+        prompts = get_all_prompts(content_type=content_type)
+        print(f"Using prompts for content type: {content_type}\n", flush=True)
         
         # Enrich the chapter
         ai_fields = enrich_chunk(
@@ -415,8 +430,8 @@ def process_book_chapter_ai_enrichment(book_id: str, chapter_id: int, chapter_te
         
         print(f"AI enrichment complete\n", flush=True)
         
-        # Step 3: Update database
-        print("[3/3] Saving AI fields to database...", flush=True)
+        # Step 4: Update database
+        print("[4/4] Saving AI fields to database...", flush=True)
         
         updated = update_chapter_ai_fields(
             book_id=book_id,
@@ -460,8 +475,20 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
     print(f"{'='*70}\n", flush=True)
     
     try:
-        # Step 1: Get all chapters from database
-        print("[1/4] Loading chapters from database...", flush=True)
+        # Step 1: Get book metadata to determine type
+        print("[1/5] Loading book metadata...", flush=True)
+        from db.books_crud import get_book_by_id
+        book = get_book_by_id(book_id)
+        
+        if not book:
+            print(f"Book not found: {book_id}", flush=True)
+            return False
+            
+        book_type = book.get('type', 'book')
+        print(f"Book type: {book_type}\n", flush=True)
+        
+        # Step 2: Get all chapters from database
+        print("[2/5] Loading chapters from database...", flush=True)
         chapters = get_chapters_by_book(book_id)
         
         if not chapters:
@@ -470,17 +497,20 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
         
         print(f"Found {len(chapters)} chapters\n", flush=True)
         
-        # Step 2: Load chapter text from storage
-        print("[2/4] Loading chapter text from storage...", flush=True)
+        # Step 3: Load chapter text from storage
+        print("[3/5] Loading chapter text from storage...", flush=True)
         chapters = load_chapters_text(chapters)
         print(f"Loaded text for {len(chapters)} chapters\n", flush=True)
         
-        # Step 3: Enrich all chapters with AI (parallel)
-        print("[3/4] Enriching chapters with AI (parallel)...", flush=True)
+        # Step 4: Enrich all chapters with AI (parallel)
+        print("[4/5] Enriching chapters with AI (parallel)...", flush=True)
         
-        # Get book prompts
+        # Get appropriate prompts based on book type
         from prompts import get_all_prompts
-        prompts = get_all_prompts(content_type='book')
+        # Use book_type if it's 'lecture', otherwise default to 'book'
+        content_type = book_type if book_type == 'lecture' else 'book'
+        prompts = get_all_prompts(content_type=content_type)
+        print(f"Using prompts for content type: {content_type}\n", flush=True)
         
         # Prepare chapters for enrichment
         chapters_for_enrichment = []
@@ -509,8 +539,8 @@ def process_book_all_chapters_ai_enrichment(book_id: str) -> bool:
         
         print(f"\nAI enrichment complete for {len(enriched_chapters)} chapters", flush=True)
         
-        # Step 4: Update all chapters in database
-        print("\n[4/4] Saving AI fields to database...", flush=True)
+        # Step 5: Update all chapters in database
+        print("\n[5/5] Saving AI fields to database...", flush=True)
         
         success_count = 0
         for enriched in enriched_chapters:

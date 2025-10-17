@@ -26,7 +26,8 @@ def create_book(
     publication_year: Optional[int] = None,
     isbn: Optional[str] = None,
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None
+    tags: Optional[List[str]] = None,
+    book_type: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Create a new book entry
@@ -40,6 +41,7 @@ def create_book(
         isbn: ISBN number
         description: Book description
         tags: List of tags
+        book_type: Type of book ('book', 'lecture', etc.) - defaults to 'book'
         
     Returns:
         Created book record or None on error
@@ -53,10 +55,11 @@ def create_book(
             'publication_year': publication_year,
             'isbn': isbn,
             'description': description,
-            'tags': tags or []
+            'tags': tags or [],
+            'type': book_type or 'book'
         }
         
-        print(f"[DB->] INSERT books (id={book_id})")
+        print(f"[DB->] INSERT books (id={book_id}, type={book_type or 'book'})")
         response = supabase.table("books").insert(book_data).execute()
         
         if response.data and len(response.data) > 0:

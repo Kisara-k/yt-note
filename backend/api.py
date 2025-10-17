@@ -114,6 +114,7 @@ class BookRequest(BaseModel):
     isbn: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[List[str]] = None
+    book_type: Optional[str] = None  # 'book', 'lecture', etc. - defaults to 'book'
     chapters: List[Dict[str, Any]]  # Flexible: accept any dict, will normalize later
     
     class Config:
@@ -972,7 +973,8 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
             publication_year=request.publication_year,
             isbn=request.isbn,
             description=request.description,
-            tags=request.tags
+            tags=request.tags,
+            book_type=request.book_type
         )
         
         if not book:
@@ -1431,11 +1433,11 @@ async def get_prompts(content_type: str = 'video', current_user: dict = Depends(
     """Get prompt configurations
     
     Args:
-        content_type: Either 'video' or 'book' to determine which prompt set to return
+        content_type: 'video', 'book', 'lecture', or other to determine which prompt set to return
     """
     try:
-        if content_type not in ['video', 'book']:
-            raise HTTPException(status_code=400, detail="content_type must be 'video' or 'book'")
+        if content_type not in ['video', 'book', 'lecture']:
+            raise HTTPException(status_code=400, detail="content_type must be 'video', 'book', or 'lecture'")
         
         prompts_dict = get_all_prompts(content_type=content_type)
         prompts_list = [

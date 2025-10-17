@@ -31,6 +31,7 @@ CREATE TABLE books (
     isbn VARCHAR(20),
     description TEXT,
     tags TEXT[],
+    type VARCHAR(50) DEFAULT 'book',  -- Type: 'book', 'lecture', etc.
     
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -44,6 +45,7 @@ CREATE TRIGGER update_books_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE books IS 'Stores book metadata entered by users';
+COMMENT ON COLUMN books.type IS 'Type of book content: book, lecture, etc. Affects AI prompt selection. Defaults to book';
 
 -- ============================================================
 -- TABLE: book_chapters

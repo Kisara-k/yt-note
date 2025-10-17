@@ -6,6 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, Filter } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -121,6 +128,7 @@ export function BookAdd() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
+  const [bookType, setBookType] = useState('book');
   const [chaptersJson, setChaptersJson] = useState('');
   const [uploading, setUploading] = useState(false);
   const { getAccessToken } = useAuth();
@@ -198,6 +206,7 @@ export function BookAdd() {
           book_id: bookId,
           title: title,
           author: author || null,
+          book_type: bookType,
           description: description || null,
           chapters: normalizedChapters,
         }),
@@ -289,6 +298,26 @@ export function BookAdd() {
                 onChange={(e) => setAuthor(e.target.value)}
                 disabled={uploading}
               />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='book-type'>Type</Label>
+              <Select
+                value={bookType}
+                onValueChange={setBookType}
+                disabled={uploading}
+              >
+                <SelectTrigger id='book-type' className='w-full'>
+                  <SelectValue placeholder='Select book type' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='book'>Book</SelectItem>
+                  <SelectItem value='lecture'>Lecture</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className='text-sm text-muted-foreground'>
+                Type affects AI prompt selection for content analysis
+              </p>
             </div>
 
             <div className='space-y-2'>
