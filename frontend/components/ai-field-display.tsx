@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -178,7 +179,7 @@ export function AIFieldDisplay({
             {content ? (
               useMarkdown ? (
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[remarkMath, remarkGfm]}
                   rehypePlugins={[rehypeKatex]}
                   components={{
                     h1: ({ node, ...props }) => (
@@ -273,6 +274,52 @@ export function AIFieldDisplay({
                     hr: ({ node, ...props }) => (
                       <hr
                         className='my-2 border-gray-300 dark:border-gray-700'
+                        {...props}
+                      />
+                    ),
+                    // Table components for GFM support
+                    table: ({ node, ...props }) => (
+                      <div className='overflow-x-auto my-2'>
+                        <table
+                          className='text-xs min-w-full border-collapse border border-gray-300 dark:border-gray-700'
+                          {...props}
+                        />
+                      </div>
+                    ),
+                    thead: ({ node, ...props }) => (
+                      <thead
+                        className='bg-gray-100 dark:bg-gray-800'
+                        {...props}
+                      />
+                    ),
+                    tbody: ({ node, ...props }) => <tbody {...props} />,
+                    tr: ({ node, ...props }) => (
+                      <tr
+                        className='border-b border-gray-300 dark:border-gray-700'
+                        {...props}
+                      />
+                    ),
+                    th: ({ node, ...props }) => (
+                      <th
+                        className='text-xs border border-gray-300 dark:border-gray-700 px-3 py-2 text-left font-semibold'
+                        {...props}
+                      />
+                    ),
+                    td: ({ node, ...props }) => (
+                      <td
+                        className='text-xs border border-gray-300 dark:border-gray-700 px-3 py-2'
+                        {...props}
+                      />
+                    ),
+                    // GFM strikethrough support
+                    del: ({ node, ...props }) => (
+                      <del className='line-through' {...props} />
+                    ),
+                    // GFM task list support
+                    input: ({ node, ...props }) => (
+                      <input
+                        className='mr-1.5 align-middle'
+                        disabled
                         {...props}
                       />
                     ),
