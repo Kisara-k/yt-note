@@ -76,7 +76,11 @@ CREATE TABLE book_chapters (
     
     -- Constraints
     PRIMARY KEY (book_id, chapter_id),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    -- ON UPDATE CASCADE: When book_id changes, update all related chapters
+    -- ON DELETE CASCADE: When book is deleted, delete all related chapters
+    FOREIGN KEY (book_id) REFERENCES books(id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
 );
 
 -- Trigger for auto-updating updated_at
@@ -102,8 +106,11 @@ CREATE TABLE book_notes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     
-    -- Note: ON DELETE NO ACTION - notes persist even if book is deleted
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE NO ACTION
+    -- ON UPDATE CASCADE: When book_id changes, update the note's book_id
+    -- ON DELETE NO ACTION: Notes persist even if book is deleted
+    FOREIGN KEY (book_id) REFERENCES books(id)
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
 );
 
 -- Trigger for auto-updating updated_at

@@ -157,18 +157,23 @@ CREATE INDEX idx_video_notes_custom_tags ON video_notes USING GIN(custom_tags);
 -- ============================================================
 
 -- subtitle_chunks references youtube_videos
+-- ON UPDATE CASCADE: When video_id changes, update all related chunks
+-- ON DELETE CASCADE: When video is deleted, delete all related chunks
 ALTER TABLE subtitle_chunks
     ADD CONSTRAINT fk_subtitle_chunk_video
     FOREIGN KEY (video_id)
     REFERENCES youtube_videos(id)
+    ON UPDATE CASCADE
     ON DELETE CASCADE;
 
 -- video_notes references youtube_videos
--- Note: ON DELETE NO ACTION - notes persist even if video is deleted
+-- ON UPDATE CASCADE: When video_id changes, update the note's video_id
+-- ON DELETE NO ACTION: Notes persist even if video is deleted
 ALTER TABLE video_notes
     ADD CONSTRAINT fk_video
     FOREIGN KEY (video_id)
     REFERENCES youtube_videos(id)
+    ON UPDATE CASCADE
     ON DELETE NO ACTION;
 
 -- ============================================================
