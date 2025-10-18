@@ -28,7 +28,7 @@ interface AIFieldDisplayProps {
 export function AIFieldDisplay({
   title,
   content,
-  height = 'h-80',
+  height = 'h-96',
   onRegenerate,
   onUpdate,
   isRegenerating = false,
@@ -90,7 +90,7 @@ export function AIFieldDisplay({
 
   return (
     <Card className='flex flex-col'>
-      <CardHeader className='px-3 pt-1.5 pb-1.5 pr-1.5 shrink-0'>
+      <CardHeader className='px-3 pt-0.5 pb-0.5 pr-1.5 shrink-0 bg-slate-100'>
         <div className='flex items-center justify-between gap-2'>
           <CardTitle className='text-sm'>
             {title}
@@ -153,7 +153,7 @@ export function AIFieldDisplay({
         </div>
       </CardHeader>
       <CardContent
-        className={`${height} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500`}
+        className={`${height} overflow-y-auto pt-1 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500`}
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',

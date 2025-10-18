@@ -263,11 +263,11 @@
 }
 
 .ProseMirror h2 {
-  @apply text-sm font-medium mt-2.5 mb-1.5 first:mt-0;
+  @apply text-sm font-medium mt-2.5 mb-1 -ml-4 first:mt-0;
 }
 
 .ProseMirror h3 {
-  @apply text-xs font-medium mt-2 mb-1 first:mt-0;
+  @apply text-xs font-medium mt-3 mb-1 -ms-2 first:mt-0;
 }
 
 .ProseMirror h4 {

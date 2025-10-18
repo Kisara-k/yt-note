@@ -714,7 +714,7 @@ export function ChunkViewer({
       <div className='space-y-4'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <AIFieldDisplay
-            title='Summary'
+            title='Points'
             content={chunkDetails?.ai_field_1}
             // height='h-48'
             onRegenerate={() => handleRegenerateField('field_1')}
@@ -724,7 +724,7 @@ export function ChunkViewer({
           />
 
           <AIFieldDisplay
-            title='Key Points'
+            title='Outline'
             content={chunkDetails?.ai_field_2}
             // height='h-48'
             onRegenerate={() => handleRegenerateField('field_2')}
@@ -734,7 +734,7 @@ export function ChunkViewer({
           />
 
           <AIFieldDisplay
-            title='Topics'
+            title='Q & A'
             content={chunkDetails?.ai_field_3}
             // height='h-48'
             onRegenerate={() => handleRegenerateField('field_3')}

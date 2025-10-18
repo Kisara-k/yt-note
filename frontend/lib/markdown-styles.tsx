@@ -16,8 +16,8 @@ import type { Components } from 'react-markdown';
  */
 export const markdownStyles = {
   h1: 'text-base font-medium mt-3 mb-2 first:mt-0',
-  h2: 'text-sm font-medium mt-2.5 mb-1.5 first:mt-0',
-  h3: 'text-xs font-medium mt-2 mb-1 first:mt-0',
+  h2: 'text-sm font-medium mt-2.5 mb-1 -ml-4 first:mt-0',
+  h3: 'text-xs font-medium mt-3 mb-1 -ms-2 first:mt-0',
   h4: 'text-xs font-semibold mt-2 mb-1 first:mt-0',
   h5: 'text-xs font-semibold mt-1.5 mb-0.5 first:mt-0',
   h6: 'text-xs font-semibold mt-1.5 mb-0.5 first:mt-0',
@@ -25,7 +25,7 @@ export const markdownStyles = {
   ul: 'text-xs my-1 ml-4 list-disc',
   ol: 'text-xs my-1 ml-4 list-decimal',
   li: 'text-xs my-0.5',
-  strong: 'font-bold',
+  strong: 'font-medium',
   em: 'italic',
   code: 'text-xs bg-muted px-1 py-0.5 rounded font-mono',
   pre: 'text-xs bg-muted p-2 rounded my-2 overflow-x-auto',

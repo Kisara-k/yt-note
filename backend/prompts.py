@@ -51,7 +51,7 @@ You are an advanced language model. You are helpful and honest. Your knowledge i
 * **Prioritize clarity and understandability, not theatrics.**  
   Avoid unnecessary complexity or stylistic embellishments. Every sentence should serve understanding and accuracy.
 
-Always maintain a professional, clear, and objective demeanor. Do not include conversational openings or closings unless the user explicitly requests a conversational style.
+Always maintain a professional, clear, and objective demeanor. Do not ever include conversational openings or closings.
 """
 
 
@@ -69,7 +69,7 @@ Segment text:
 Generate only the title, no additional text.'''
 
 VIDEO_PROMPT_1 = '''
-Extract all the KEY FACTS from the content, ignoring filler and common knowledge. Use emojis in headings for clarity. Create 5-10 fact-topics as needed. 
+Extract all the KEY FACTS from the content that are essential to understand, ignoring filler and common knowledge. Use emojis in headings for clarity.
 
 Each fact-topic must be a **single, clear sentence** that summarizes the key point, reading just the fact-topic should give a complete understanding of that piece of information. Then list the supporting bullet points under it. 
 
@@ -89,15 +89,25 @@ content:
 '''
 
 VIDEO_PROMPT_2 = '''
-Create a detailed, introductory understandable study note based on the following content, make sure it's well organized, ADD CONTENTT AND DETAIL, and is clear and detailed. Explain key concepts clearly and in words, then use lists and other short forms as needed. Do not leave anything out that's in the content. Structured like a note, not just a list of points. Each section must have a clear, detailed IN WORD INTRODUCTION. Don't use overly academic tone.
+Create a clear, structured study note based on the following content. 
+Focus on explaining key ideas in a way that’s easy to understand, while keeping the note concise and organized. 
+Each main section should begin with a short paragraph (around 3–4 sentences) that introduces and explains the concept in plain language, followed by short lists or key points when useful.
 
-Be VERY DETAILED in each of your explanations. Prefer clear, in-word explanations over brevity. You MUST use EMOJIs in main headings for clarity, and number main headings in this EXACT FORMAT:
+Use EMOJIs in main headings for clarity, and number main headings in this EXACT FORMAT:
 ## 1. [Emoji] Heading
-Use between 3 - 10 main headings as needed. Use lists where needed. Don't use too many sub headings.
+
+Guidelines:
+- Use between 3–10 main headings as needed.
+- Each heading’s introductory paragraph (around 3–4 sentences) should explain the concept clearly and provide enough context for understanding.
+- Include only as much supporting detail as needed to understand the concept.
+- Avoid filler or over-explaining simple ideas.
+- The note should be complete, informative, and understandable, but not overly long.
+- Focus on clarity and conceptual understanding above brevity.
 
 content:
 {chunk_text}
 '''
+
 
 VIDEO_PROMPT_3 = '''
 Write 10 multiple choice questions that comprehensively cover this topic (each question having ONE OR MORE CORRECT answer). DO NOT include the answers here. Make sure to cover all the key concepts and ideas in the content. Each question should be clear and concise. Include TRICKY and DIFFICULT questions. Make sure the answer isn't obvious, and REQUIRE A CLEAR UNDERSTANDING of the content. No need to say like "according to the content", as it is implied. Use the following EXACT FORMAT.
@@ -175,6 +185,14 @@ Lecture section:
 {chunk_text}
 
 Provide 3-5 critical learning points or concepts that are essential to understand.'''
+
+BOOK_PROMPT_1 = VIDEO_PROMPT_1
+BOOK_PROMPT_2 = VIDEO_PROMPT_2
+BOOK_PROMPT_3 = VIDEO_PROMPT_3
+
+LECTURE_PROMPT_1 = VIDEO_PROMPT_1
+LECTURE_PROMPT_2 = VIDEO_PROMPT_2
+LECTURE_PROMPT_3 = VIDEO_PROMPT_3
 
 
 # ============================================================
