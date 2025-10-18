@@ -90,6 +90,9 @@ def _remove_filler_words(text: str) -> str:
     
     # Remove repeated consecutive words (stuttering or emphasis)
     text = re.sub(r'\b(\w+)(\s+\1\b)+', r'\1', text, flags=re.IGNORECASE)
+
+    # YouTube swear filter
+    text = re.sub(r'\[ __ \] *', '', text)
     
     # Clean up multiple spaces and normalize whitespace
     text = ' '.join(text.split())

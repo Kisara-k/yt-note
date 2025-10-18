@@ -56,7 +56,8 @@ def enrich_chunk(
         if not prompt_template:
             return field_name, ""
         
-        prompt = f"{prompt_template}\n\nText:\n{text}"
+        # prompt = f"{prompt_template}\n\nText:\n{text}"
+        prompt = prompt_template.format(chunk_text=text)
         
         retries = 0
         while retries <= max_retries:
@@ -77,6 +78,7 @@ def enrich_chunk(
                 )
                 # Filter the AI response before returning
                 raw_content = response.choices[0].message.content.strip()
+                print(prompt)
                 print(raw_content)
                 filtered_content = filter_ai_response(raw_content, field_name=field_name)
                 return field_name, filtered_content
