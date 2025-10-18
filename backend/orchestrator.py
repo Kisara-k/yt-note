@@ -882,12 +882,23 @@ def regenerate_book_chapter_ai_field(
         Dict with the regenerated field value or error
     """
     try:
-        # Step 1: Get chapter text
+        # Step 1: Get book data to determine content type
+        from db.books_crud import get_book_by_id
+        book = get_book_by_id(book_id)
+        
+        if not book:
+            return {'error': 'Book not found'}
+        
+        # Determine content type based on book type (defaults to 'book')
+        book_type = book.get('type', 'book')
+        content_type = 'lecture' if book_type == 'lecture' else 'book'
+        
+        # Step 2: Get chapter text
         if chapter_text and chapter_text.strip():
-            print("[1/4] Using provided chapter text (no database load needed)...")
+            print(f"[1/4] Using provided chapter text (no database load needed)...")
             text_to_enrich = chapter_text
         else:
-            print("[1/4] Loading chapter from database...")
+            print(f"[1/4] Loading chapter from database...")
             from db.book_chapters_crud import get_chapter_details
             chapter = get_chapter_details(book_id, chapter_id)
             
@@ -899,9 +910,10 @@ def regenerate_book_chapter_ai_field(
             
             text_to_enrich = chapter['chapter_text']
         
-        # Step 2: Get prompts with only the requested field
+        # Step 3: Get prompts with only the requested field
         from prompts import get_all_prompts
-        all_prompts = get_all_prompts(content_type='book')
+        all_prompts = get_all_prompts(content_type=content_type)
+        print(f"[2/4] Using '{content_type}' prompts for regeneration...")
         
         # Create selective prompts - only the requested field
         # Note: Books don't have 'title' field
@@ -911,9 +923,9 @@ def regenerate_book_chapter_ai_field(
             'field_3': all_prompts.get('field_3', '') if field_name == 'field_3' else ''
         }
         
-        print(f"[2/4] Regenerating field '{field_name}' with AI...")
+        print(f"[3/4] Regenerating field '{field_name}' with AI...")
         
-        # Step 3: Enrich with AI (only the selected field)
+        # Step 4: Enrich with AI (only the selected field)
         ai_fields = enrich_chunk(
             text=text_to_enrich,
             prompts=selective_prompts,
@@ -923,9 +935,9 @@ def regenerate_book_chapter_ai_field(
             max_tokens_other=OPENAI_MAX_TOKENS_OTHER
         )
         
-        print(f"[3/4] Field regenerated successfully")
+        print(f"[4/4] Field regenerated successfully")
         
-        # Step 4: Update database with only the regenerated field
+        # Step 5: Update database with only the regenerated field
         from db.book_chapters_crud import update_chapter_ai_fields
         
         update_data = {
@@ -940,7 +952,7 @@ def regenerate_book_chapter_ai_field(
         if not update_data:
             return {'error': 'Invalid field name'}
         
-        print(f"[4/4] Saving regenerated field to database...")
+        print(f"[5/5] Saving regenerated field to database...")
         
         updated = update_chapter_ai_fields(
             book_id=book_id,

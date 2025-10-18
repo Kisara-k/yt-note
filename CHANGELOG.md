@@ -2,6 +2,38 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-10-18] - Fixed Lecture Prompt Selection in Field Regeneration 🔧
+
+### Fixed - Wrong Prompts Used When Regenerating Lecture Fields
+
+**Resolved bug where lecture chapters used book prompts during single field regeneration**
+
+#### Problem
+
+- When regenerating a single AI field for a lecture chapter, system used book prompts instead of lecture prompts
+- Occurred despite the book having `type='lecture'` set correctly in database
+- Bulk processing worked correctly, but single field regeneration ignored the type
+- Users received generic book-style output instead of lecture-specific formatting
+
+#### Root Cause
+
+- `regenerate_book_chapter_ai_field()` function was hardcoded to use `content_type='book'`
+- Function never checked the book's `type` field from database before selecting prompts
+- Other functions like `process_book_chapter_ai_enrichment()` correctly handled this
+
+#### Solution
+
+- Modified `regenerate_book_chapter_ai_field()` in `orchestrator.py`:
+  - Added book metadata fetch at function start using `get_book_by_id()`
+  - Dynamically determine content type: `content_type = 'lecture' if book_type == 'lecture' else 'book'`
+  - Pass dynamic content type to `get_all_prompts(content_type=content_type)`
+  - Added logging to show which content type is being used
+- Now matches the behavior of bulk processing functions
+
+#### Files Changed
+
+- `backend/orchestrator.py` - `regenerate_book_chapter_ai_field()` function
+
 ## [2025-10-18] - Centralized Markdown Styling 🎨
 
 ### Implemented Single Source of Truth for Markdown Styles
