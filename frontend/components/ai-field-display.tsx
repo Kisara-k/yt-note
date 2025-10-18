@@ -90,7 +90,7 @@ export function AIFieldDisplay({
 
   return (
     <Card className='flex flex-col'>
-      <CardHeader className='px-3 pt-0.5 pb-0.5 pr-1.5 shrink-0 bg-slate-100'>
+      <CardHeader className='px-3 pt-0.5 pb-0.5 pr-1.5 shrink-0 bg-muted rounded-t-lg'>
         <div className='flex items-center justify-between gap-2'>
           <CardTitle className='text-sm'>
             {title}

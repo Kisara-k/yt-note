@@ -30,6 +30,7 @@ import { CustomTooltip } from '@/components/custom-tooltip';
 import { useBulkAIPolling } from '@/lib/use-bulk-ai-polling';
 import { toast } from 'sonner';
 import { validateAndNormalizeBookId } from '@/lib/book-id-validation';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type ContentType = 'video' | 'book';
 
@@ -714,6 +715,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
             </div>
 
             <div className='flex items-center gap-2'>
+              <ThemeToggle />
               <ChunkTextToggle />
               <Button
                 variant='outline'
