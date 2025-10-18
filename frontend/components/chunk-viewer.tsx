@@ -671,7 +671,7 @@ export function ChunkViewer({
           onValueChange={(value) => setSelectedChunkId(parseInt(value))}
           disabled={loadingChunks || chunkIndex.length === 0}
         >
-          <SelectTrigger className='w-full'>
+          <SelectTrigger className='w-full' hideIcon={chunkIndex.length <= 1}>
             <SelectValue
               placeholder={
                 loadingChunks
