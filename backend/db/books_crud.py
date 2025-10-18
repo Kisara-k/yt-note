@@ -70,7 +70,14 @@ def create_book(
             return None
             
     except Exception as e:
-        print(f"[DB!!] {str(e)}")
+        error_msg = str(e)
+        print(f"[DB!!] {error_msg}")
+        
+        # Check for duplicate key error
+        if "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower() or "unique" in error_msg.lower():
+            print(f"[DB!!] Book with ID '{book_id}' already exists")
+            raise ValueError(f"Book with ID '{book_id}' already exists")
+        
         return None
 
 

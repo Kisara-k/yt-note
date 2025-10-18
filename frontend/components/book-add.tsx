@@ -16,6 +16,7 @@ import {
 import { Loader2, Filter } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { validateAndNormalizeBookId } from '@/lib/book-id-validation';
 
 // Utility to clean JSON (remove trailing commas, comments, etc.)
 function cleanJSON(jsonStr: string): string {
@@ -125,6 +126,7 @@ function normalizeChapters(
 
 export function BookAdd() {
   const [bookId, setBookId] = useState('');
+  const [bookIdError, setBookIdError] = useState('');
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
@@ -134,9 +136,26 @@ export function BookAdd() {
   const { getAccessToken } = useAuth();
   const router = useRouter();
 
+  const handleBookIdChange = (value: string) => {
+    setBookId(value);
+
+    // Clear error when user starts typing
+    if (bookIdError && value.trim()) {
+      setBookIdError('');
+    }
+  };
+
   const handleUpload = async () => {
     if (!bookId.trim() || !title.trim() || !chaptersJson.trim()) {
       alert('Please fill in Book ID, Title, and Chapters JSON');
+      return;
+    }
+
+    // Validate and normalize book ID
+    const { isValid, normalized, error } = validateAndNormalizeBookId(bookId);
+    if (!isValid) {
+      setBookIdError(error || 'Invalid book ID');
+      alert(error || 'Invalid book ID');
       return;
     }
 
@@ -203,7 +222,7 @@ export function BookAdd() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          book_id: bookId,
+          book_id: normalized, // Use normalized book ID
           title: title,
           author: author || null,
           book_type: bookType,
@@ -218,10 +237,19 @@ export function BookAdd() {
           typeof error.detail === 'string'
             ? error.detail
             : error.error || error.message || 'Failed to upload book';
+
+        // Handle duplicate book ID error specifically
+        if (
+          response.status === 409 ||
+          errorMessage.includes('already exists')
+        ) {
+          setBookIdError(errorMessage);
+        }
+
         throw new Error(errorMessage);
       }
 
-      router.push(`/book?b=${bookId}`);
+      router.push(`/book?b=${normalized}`); // Use normalized book ID in URL
     } catch (error) {
       console.error('Error uploading book:', error);
       alert(error instanceof Error ? error.message : 'Failed to upload book');
@@ -266,13 +294,18 @@ export function BookAdd() {
               <Input
                 id='book-id'
                 type='text'
-                placeholder='e.g., practical_guide_123'
+                placeholder='e.g., practical_guide_123 or Practical Guide 123'
                 value={bookId}
-                onChange={(e) => setBookId(e.target.value)}
+                onChange={(e) => handleBookIdChange(e.target.value)}
                 disabled={uploading}
+                className={bookIdError ? 'border-red-500' : ''}
               />
+              {bookIdError && (
+                <p className='text-sm text-red-500'>{bookIdError}</p>
+              )}
               <p className='text-sm text-muted-foreground'>
-                Unique identifier for this book
+                Unique identifier - letters, numbers, spaces, and underscores
+                allowed (auto-normalized to lowercase with underscores)
               </p>
             </div>
 

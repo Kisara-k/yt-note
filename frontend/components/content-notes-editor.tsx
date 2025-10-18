@@ -29,6 +29,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CustomTooltip } from '@/components/custom-tooltip';
 import { useBulkAIPolling } from '@/lib/use-bulk-ai-polling';
 import { toast } from 'sonner';
+import { validateAndNormalizeBookId } from '@/lib/book-id-validation';
 
 type ContentType = 'video' | 'book';
 
@@ -157,9 +158,21 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
         return;
       }
 
+      // For books, validate and normalize the ID
+      let normalizedId = id;
+      if (!isVideo) {
+        const { isValid, normalized, error } = validateAndNormalizeBookId(id);
+        if (!isValid) {
+          alert(error || 'Invalid book ID format');
+          setLoading(false);
+          return;
+        }
+        normalizedId = normalized;
+      }
+
       const endpoint = isVideo
-        ? `http://localhost:8000/api/video/${id}`
-        : `http://localhost:8000/api/book/${id}`;
+        ? `http://localhost:8000/api/video/${normalizedId}`
+        : `http://localhost:8000/api/book/${normalizedId}`;
 
       const response = await fetch(endpoint, {
         headers: {
@@ -174,8 +187,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       const data: VideoInfo | BookInfo = await response.json();
 
       const noteEndpoint = isVideo
-        ? `http://localhost:8000/api/note/${id}`
-        : `http://localhost:8000/api/book/${id}/note`;
+        ? `http://localhost:8000/api/note/${normalizedId}`
+        : `http://localhost:8000/api/book/${normalizedId}/note`;
 
       const notePromise = fetch(noteEndpoint, {
         headers: {
@@ -198,9 +211,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
       const routePath = isVideo ? '/video' : '/book';
       const paramKey = isVideo ? 'v' : 'b';
-      const paramValue = isVideo
-        ? (data as VideoInfo).video_id
-        : (data as BookInfo).id;
+      // Use normalizedId for books to ensure URL reflects the normalized form
+      const paramValue = isVideo ? (data as VideoInfo).video_id : normalizedId;
       router.push(`${routePath}?${paramKey}=${paramValue}`, { scroll: false });
 
       if (isVideo) {
@@ -285,7 +297,16 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
   const handleLoadBook = async () => {
     if (!inputValue.trim()) return;
-    await loadContentById(inputValue.trim());
+
+    // Validate and normalize book ID before searching
+    const { isValid, normalized, error } =
+      validateAndNormalizeBookId(inputValue);
+    if (!isValid) {
+      alert(error || 'Invalid book ID format');
+      return;
+    }
+
+    await loadContentById(normalized);
   };
 
   const handleSaveNote = async () => {

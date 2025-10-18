@@ -971,17 +971,21 @@ async def create_book_endpoint(request: BookRequest, current_user: dict = Depend
             raise HTTPException(status_code=400, detail=error_msg)
         
         # Create book metadata
-        book = create_book(
-            book_id=request.book_id,
-            title=request.title,
-            author=request.author,
-            publisher=request.publisher,
-            publication_year=request.publication_year,
-            isbn=request.isbn,
-            description=request.description,
-            tags=request.tags,
-            book_type=request.book_type
-        )
+        try:
+            book = create_book(
+                book_id=request.book_id,
+                title=request.title,
+                author=request.author,
+                publisher=request.publisher,
+                publication_year=request.publication_year,
+                isbn=request.isbn,
+                description=request.description,
+                tags=request.tags,
+                book_type=request.book_type
+            )
+        except ValueError as e:
+            # Catch duplicate book ID error
+            raise HTTPException(status_code=409, detail=str(e))
         
         if not book:
             raise HTTPException(status_code=500, detail="Failed to create book")
