@@ -2,6 +2,33 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-10-18] - Centralized Markdown Styling 🎨
+
+### Implemented Single Source of Truth for Markdown Styles
+
+**Unified styling between ReactMarkdown (AI field display) and Tiptap editor**
+
+#### Implementation
+
+- **Created** `lib/markdown-styles.tsx` - centralized style definitions
+- **Auto-generation**: Heading styles (h1-h6) injected into `globals.css` at build time
+- **Direct application**: Other elements (p, ul, ol, code, etc.) use `HTMLAttributes` in Tiptap config
+- **Build script**: `lib/generate-tiptap-css.ts` runs via `predev`/`prebuild` hooks
+- **Dependencies**: Added `tsx` as dev dependency for TypeScript execution
+
+#### Why Headings Need Auto-Generation
+
+- Tiptap's StarterKit treats h1-h6 as single "heading" extension
+- Cannot apply level-specific classes via `HTMLAttributes`
+- Solution: Generate CSS with `.ProseMirror h1-h6` selectors from TypeScript
+
+#### Workflow
+
+1. Edit styles in `lib/markdown-styles.tsx` (single source)
+2. Run `pnpm run dev` or `pnpm run build`
+3. Script auto-injects heading CSS between `/* AUTO-GENERATED */` markers in `globals.css`
+4. Both ReactMarkdown and Tiptap reflect changes immediately
+
 ## [2025-10-17] - AI Polling Fix: Complete Fields Loading 🔧
 
 ### Fixed - UI Not Updating After AI Completion

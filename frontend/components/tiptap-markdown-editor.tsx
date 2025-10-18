@@ -42,6 +42,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { markdownStyles } from '@/lib/markdown-styles';
 
 interface TiptapMarkdownEditorProps {
   value: string;
@@ -305,6 +306,39 @@ export function TiptapMarkdownEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
+        paragraph: {
+          HTMLAttributes: { class: markdownStyles.p },
+        },
+        bulletList: {
+          HTMLAttributes: { class: markdownStyles.ul },
+        },
+        orderedList: {
+          HTMLAttributes: { class: markdownStyles.ol },
+        },
+        listItem: {
+          HTMLAttributes: { class: markdownStyles.li },
+        },
+        bold: {
+          HTMLAttributes: { class: markdownStyles.strong },
+        },
+        italic: {
+          HTMLAttributes: { class: markdownStyles.em },
+        },
+        code: {
+          HTMLAttributes: { class: markdownStyles.code },
+        },
+        codeBlock: {
+          HTMLAttributes: { class: markdownStyles.pre },
+        },
+        blockquote: {
+          HTMLAttributes: { class: markdownStyles.blockquote },
+        },
+        horizontalRule: {
+          HTMLAttributes: { class: markdownStyles.hr },
+        },
+        strike: {
+          HTMLAttributes: { class: markdownStyles.del },
+        },
         heading: {
           levels: [1, 2, 3, 4, 5, 6],
         },
@@ -320,13 +354,10 @@ export function TiptapMarkdownEditor({
       }),
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-500 underline cursor-pointer',
-        },
       }),
       Image.configure({
         HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg',
+          class: markdownStyles.img,
         },
       }),
       Underline,
@@ -338,12 +369,7 @@ export function TiptapMarkdownEditor({
     content: value,
     editorProps: {
       attributes: {
-        class: cn(
-          'prose prose-sm max-w-none focus:outline-none p-4 text-sm',
-          '[&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base',
-          '[&_p]:text-sm [&_li]:text-sm [&_code]:text-xs',
-          className
-        ),
+        class: cn('max-w-none focus:outline-none p-4', className),
       },
     },
     onUpdate: ({ editor }) => {
