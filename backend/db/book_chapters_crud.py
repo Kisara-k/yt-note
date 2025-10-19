@@ -370,6 +370,38 @@ def delete_all_chapters_for_book(book_id: str) -> bool:
         return False
 
 
+def update_chapter_title(book_id: str, chapter_id: int, chapter_title: str) -> Optional[Dict[str, Any]]:
+    """
+    Update chapter title in database
+    
+    Args:
+        book_id: Book identifier
+        chapter_id: Chapter identifier
+        chapter_title: New chapter title
+        
+    Returns:
+        Updated chapter dict or None on error
+    """
+    try:
+        print(f"[DB->] UPDATE book_chapters SET chapter_title WHERE book_id={book_id} AND chapter_id={chapter_id}")
+        response = supabase.table("book_chapters")\
+            .update({"chapter_title": chapter_title})\
+            .eq("book_id", book_id)\
+            .eq("chapter_id", chapter_id)\
+            .execute()
+        
+        if not response.data or len(response.data) == 0:
+            print(f"[DB!!] Chapter not found: {book_id}/{chapter_id}")
+            return None
+        
+        print(f"[DB<-] Updated chapter title for {book_id}/{chapter_id}")
+        return response.data[0]
+        
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return None
+
+
 def update_chapter_text(book_id: str, chapter_id: int, chapter_text: str) -> Optional[Dict[str, Any]]:
     """
     Update chapter text in storage and metadata in DB

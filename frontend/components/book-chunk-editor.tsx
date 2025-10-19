@@ -81,6 +81,9 @@ export function BookChunkEditor({
     null
   );
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+  const [originalChapter, setOriginalChapter] = useState<Chapter | null>(null);
+  const [titleChanged, setTitleChanged] = useState(false);
+  const [textChanged, setTextChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -100,6 +103,21 @@ export function BookChunkEditor({
       loadBook(initialBookId);
     }
   }, [initialBookId]);
+
+  // Ctrl+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (editingChapter && (titleChanged || textChanged)) {
+          handleSaveChapter();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingChapter, titleChanged, textChanged]);
 
   const loadBook = async (book_id: string) => {
     await Promise.all([loadBookMetadata(book_id), loadChapters(book_id)]);
@@ -211,15 +229,25 @@ export function BookChunkEditor({
   const handleEditChapter = async (chapter: Chapter) => {
     // Immediately show the chapter in the editor (responsive UI)
     setSelectedChapterId(chapter.chapter_id);
-    setEditingChapter({ ...chapter, chapter_text: chapter.chapter_text || '' });
+    const initialChapter = {
+      ...chapter,
+      chapter_text: chapter.chapter_text || '',
+    };
+    setEditingChapter(initialChapter);
+    setOriginalChapter(initialChapter);
+    setTitleChanged(false);
+    setTextChanged(false);
 
     // Then fetch the text if needed
     const text = await loadChapterText(chapter);
-    setEditingChapter({ ...chapter, chapter_text: text });
+    const fullChapter = { ...chapter, chapter_text: text };
+    setEditingChapter(fullChapter);
+    setOriginalChapter(fullChapter);
   };
 
   const handleSaveChapter = async () => {
     if (!editingChapter || !bookId) return;
+    if (!titleChanged && !textChanged) return; // No changes to save
 
     setSaving(true);
     try {
@@ -229,34 +257,131 @@ export function BookChunkEditor({
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            chapter_text: editingChapter.chapter_text,
-          }),
-        }
+      // Check if this is a new chapter (not yet in the chapters list)
+      const isNewChapter = !chapters.some(
+        (ch) => ch.chapter_id === editingChapter.chapter_id
       );
 
-      if (!response.ok) {
+      let response;
+
+      if (isNewChapter) {
+        // Create new chapter using POST
+        response = await fetch(
+          `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              chapter_title: editingChapter.chapter_title,
+              chapter_text: editingChapter.chapter_text || '',
+            }),
+          }
+        );
+      } else {
+        // Update existing chapter - update title and/or text
+        if (titleChanged && textChanged) {
+          // Both changed - update title first, then text
+          const titleResponse = await fetch(
+            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                chapter_title: editingChapter.chapter_title,
+              }),
+            }
+          );
+          if (!titleResponse.ok) {
+            throw new Error('Failed to update chapter title');
+          }
+
+          response = await fetch(
+            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                chapter_text: editingChapter.chapter_text,
+              }),
+            }
+          );
+        } else if (titleChanged) {
+          // Only title changed
+          response = await fetch(
+            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                chapter_title: editingChapter.chapter_title,
+              }),
+            }
+          );
+        } else if (textChanged) {
+          // Only text changed
+          response = await fetch(
+            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                chapter_text: editingChapter.chapter_text,
+              }),
+            }
+          );
+        }
+      }
+
+      if (!response || !response.ok) {
         throw new Error('Failed to save chapter');
       }
 
-      toast.success('Chapter saved successfully');
+      const savedChapter = await response.json();
 
-      // Update chapters list
-      setChapters((prev) =>
-        prev.map((ch) =>
-          ch.chapter_id === editingChapter.chapter_id
-            ? { ...ch, chapter_text: editingChapter.chapter_text }
-            : ch
-        )
+      toast.success(
+        isNewChapter
+          ? 'Chapter created successfully'
+          : 'Chapter saved successfully'
       );
+
+      if (isNewChapter) {
+        // Add new chapter to the list
+        setChapters((prev) => [...prev, savedChapter]);
+      } else {
+        // Update existing chapter in the list
+        setChapters((prev) =>
+          prev.map((ch) =>
+            ch.chapter_id === editingChapter.chapter_id
+              ? {
+                  ...ch,
+                  chapter_title: editingChapter.chapter_title,
+                  chapter_text: editingChapter.chapter_text,
+                }
+              : ch
+          )
+        );
+      }
+
+      // Reset change tracking flags
+      setTitleChanged(false);
+      setTextChanged(false);
+      // Update original chapter to current state
+      setOriginalChapter(editingChapter);
 
       // Keep editing the same chapter (don't close editor)
     } catch (error) {
@@ -1006,22 +1131,31 @@ export function BookChunkEditor({
                 {editingChapter ? (
                   <div className='space-y-4'>
                     <div>
-                      <Label htmlFor='chapter-title'>Chapter Title</Label>
+                      <Label htmlFor='chapter-title'>
+                        Chapter Title{titleChanged && ' *'}
+                      </Label>
                       <Input
                         id='chapter-title'
                         value={editingChapter.chapter_title}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newTitle = e.target.value;
                           setEditingChapter({
                             ...editingChapter,
-                            chapter_title: e.target.value,
-                          })
-                        }
+                            chapter_title: newTitle,
+                          });
+                          // Check if title has changed from original
+                          setTitleChanged(
+                            originalChapter?.chapter_title !== newTitle
+                          );
+                        }}
                       />
                     </div>
 
                     {showChunkText && (
                       <div>
-                        <Label htmlFor='chapter-text'>Chapter Text</Label>
+                        <Label htmlFor='chapter-text'>
+                          Chapter Text{textChanged && ' *'}
+                        </Label>
                         <Textarea
                           id='chapter-text'
                           className='min-h-[400px] text-sm'
@@ -1030,12 +1164,17 @@ export function BookChunkEditor({
                               ? 'Loading chapter text...'
                               : editingChapter.chapter_text || ''
                           }
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const newText = e.target.value;
                             setEditingChapter({
                               ...editingChapter,
-                              chapter_text: e.target.value,
-                            })
-                          }
+                              chapter_text: newText,
+                            });
+                            // Check if text has changed from original
+                            setTextChanged(
+                              originalChapter?.chapter_text !== newText
+                            );
+                          }}
                           placeholder='Enter chapter text...'
                           disabled={loadingText[editingChapter.chapter_id]}
                         />
@@ -1053,7 +1192,10 @@ export function BookChunkEditor({
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleSaveChapter} disabled={saving}>
+                      <Button
+                        onClick={handleSaveChapter}
+                        disabled={saving || (!titleChanged && !textChanged)}
+                      >
                         {saving ? (
                           <>
                             <Loader2 className='mr-2 h-4 w-4 animate-spin' />

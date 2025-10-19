@@ -66,6 +66,7 @@ from db.book_chapters_crud import (
     get_chapter_index,
     get_chapter_details,
     update_chapter_note,
+    update_chapter_title,
     update_chapter_text,
     delete_chapter,
     reorder_chapters
@@ -1245,6 +1246,70 @@ async def get_all_book_notes_endpoint(current_user: dict = Depends(get_current_u
     try:
         notes = get_notes_with_book_info()
         return {"notes": notes, "count": len(notes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/book/{book_id}/chapter/{chapter_id}")
+async def create_chapter_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new chapter"""
+    try:
+        chapter_title = request.get("chapter_title")
+        chapter_text = request.get("chapter_text")
+        
+        if not chapter_title:
+            raise HTTPException(status_code=400, detail="chapter_title is required")
+        if not chapter_text:
+            raise HTTPException(status_code=400, detail="chapter_text is required")
+        
+        # Check if book exists
+        book = get_book_by_id(book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        
+        # Create the chapter
+        chapter = create_chapter(
+            book_id=book_id,
+            chapter_id=chapter_id,
+            chapter_title=chapter_title,
+            chapter_text=chapter_text
+        )
+        
+        if not chapter:
+            raise HTTPException(status_code=500, detail="Failed to create chapter")
+        
+        return chapter
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/book/{book_id}/chapter/{chapter_id}/title")
+async def update_chapter_title_endpoint(
+    book_id: str,
+    chapter_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update chapter title"""
+    try:
+        chapter_title = request.get("chapter_title")
+        if chapter_title is None:
+            raise HTTPException(status_code=400, detail="chapter_title is required")
+        
+        updated_chapter = update_chapter_title(book_id, chapter_id, chapter_title)
+        if not updated_chapter:
+            raise HTTPException(status_code=500, detail="Failed to update chapter title")
+        
+        return updated_chapter
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
