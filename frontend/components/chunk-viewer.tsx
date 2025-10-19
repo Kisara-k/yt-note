@@ -61,6 +61,7 @@ export function ChunkViewer({
   const [chunkDetails, setChunkDetails] = useState<ChunkDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingChunks, setLoadingChunks] = useState(true);
+  const [loadingChunkText, setLoadingChunkText] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [initialLoadedContent, setInitialLoadedContent] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -209,13 +210,60 @@ export function ChunkViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChunkId]); // Only re-run when selectedChunkId changes, not when loadChunkDetails changes
 
-  // Reload chunk details when showChunkText setting changes
+  // Load/unload chunk text when showChunkText setting changes (without reloading AI fields)
   useEffect(() => {
-    if (selectedChunkId !== null) {
-      loadChunkDetails(selectedChunkId);
-    }
+    const updateChunkText = async () => {
+      if (!selectedChunkId || !resourceId || !chunkDetails) return;
+
+      // If we're toggling to hide text, just clear it from state
+      if (!showChunkText) {
+        setChunkDetails((prev) => (prev ? { ...prev, chunk_text: '' } : prev));
+        return;
+      }
+
+      // If we're toggling to show text and it's not already loaded, fetch it
+      if (showChunkText && !chunkDetails.chunk_text) {
+        setLoadingChunkText(true);
+        try {
+          const token = await getAccessToken();
+          if (!token) {
+            setLoadingChunkText(false);
+            return;
+          }
+
+          const endpoint = isBook
+            ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${selectedChunkId}?include_text=true`
+            : `${API_BASE_URL}/api/chunks/${resourceId}/${selectedChunkId}?include_text=true`;
+
+          const response = await fetch(endpoint, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            setLoadingChunkText(false);
+            return;
+          }
+
+          const data = await response.json();
+          const chunkText = isBook ? data.chapter_text : data.chunk_text;
+
+          // Only update the chunk_text field, keeping everything else the same
+          setChunkDetails((prev) =>
+            prev ? { ...prev, chunk_text: chunkText || '' } : prev
+          );
+        } catch (error) {
+          console.error('Error loading chunk text:', error);
+        } finally {
+          setLoadingChunkText(false);
+        }
+      }
+    };
+
+    updateChunkText();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showChunkText]); // Reload when the setting changes
+  }, [showChunkText]); // Only reload text when the setting changes
 
   // Refresh AI fields when refreshAIFields prop changes (both books and videos)
   useEffect(() => {
@@ -749,7 +797,7 @@ export function ChunkViewer({
               content={chunkDetails?.chunk_text}
               // height='h-48'
               onUpdate={handleUpdateChunkText}
-              isLoading={loading || loadingChunks}
+              isLoading={loading || loadingChunks || loadingChunkText}
               useMarkdown={false}
             />
           )}
