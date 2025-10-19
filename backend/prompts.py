@@ -69,7 +69,7 @@ Segment text:
 Generate only the title, no additional text.'''
 
 VIDEO_PROMPT_1 = '''
-Extract all the KEY FACTS from the content that are essential to understand, ignoring filler and common knowledge. Use emojis in headings for clarity.
+Extract all the KEY FACTS from the content that are essential to understand, ignoring filler and common knowledge. Use emojis in headings for clarity. Include 3-10 main fact-topics as needed.
 
 Each fact-topic must be a **single, clear sentence** that summarizes the key point, reading just the fact-topic should give a complete understanding of that piece of information. Then list the supporting bullet points under it. 
 
@@ -190,9 +190,10 @@ BOOK_PROMPT_1 = VIDEO_PROMPT_1
 BOOK_PROMPT_2 = VIDEO_PROMPT_2
 BOOK_PROMPT_3 = VIDEO_PROMPT_3
 
-LECTURE_PROMPT_1 = VIDEO_PROMPT_1
-LECTURE_PROMPT_2 = VIDEO_PROMPT_2
-LECTURE_PROMPT_3 = VIDEO_PROMPT_3
+repl = "Use Latex for long equations, or where it provides clarity like divisions or limits.\n\ncontent:"
+LECTURE_PROMPT_1 = VIDEO_PROMPT_1.replace('content:', repl)
+LECTURE_PROMPT_2 = VIDEO_PROMPT_2.replace('content:', repl)
+LECTURE_PROMPT_3 = VIDEO_PROMPT_3.replace('content:', repl)
 
 
 # ============================================================
