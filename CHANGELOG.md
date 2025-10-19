@@ -2,6 +2,69 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-10-19] - Book Metadata Editor & Chapter Import via JSON 📚
+
+### Added Book Chunk Editor Enhancements
+
+**Implemented comprehensive book metadata editing and bulk chapter import functionality**
+
+#### New Features
+
+1. **Book Metadata Editor**
+   - Always-on edit mode for book metadata at top of chunk editor page
+   - Compact layout: 4 fields per row (Book ID, Title, Author, Type), then 4 fields (Publisher, Year, ISBN, Tags), then Description
+   - Book ID editing with validation and conflict detection
+   - Tags field with comma-separated input
+   - Real-time validation with error display
+   - No page reload when updating book ID (uses `window.history.replaceState()`)
+   - Single "Save Changes" button for all metadata updates
+
+2. **Import Chapters via JSON**
+   - New "Import JSON" button next to "Add Chapter" in chunk editor
+   - Accepts same JSON formats as book upload (array, comma-separated, line-separated)
+   - Appends chapters to existing chapters with sequential IDs
+   - Supports flexible field names (title/chapter_title, content/chapter_text/text/body)
+   - Shows import dialog with validation and error handling
+
+3. **Shared JSON Parser Utility**
+   - Created `lib/book-json-parser.ts` with reusable functions
+   - `cleanJSON()` - removes comments and trailing commas
+   - `parseFlexibleJSON()` - handles multiple JSON formats
+   - `normalizeChapters()` - standardizes field names
+   - `parseAndNormalizeChapters()` - complete parsing with validation
+   - Used by both `book-add.tsx` and `book-chunk-editor.tsx`
+
+#### Backend Changes
+
+1. **Book Update Endpoint**
+   - Added `PUT /api/book/{book_id}` endpoint
+   - Supports updating all book metadata fields including book_id
+   - Book ID validation with `validate_book_id()` function in `db_crud.py`
+   - Conflict detection returns 409 status for duplicate IDs
+   - Calls `update_book_id()` function with cascade support
+
+2. **Database Functions**
+   - `update_book_id()` in `books_crud.py` - updates book ID with cascade
+   - `validate_book_id()` in `db_crud.py` - validates ID format (lowercase, underscores, 1-100 chars)
+   - Both functions check for conflicts and existing records
+
+3. **Database Schema Updates**
+   - Added `ON UPDATE CASCADE` to all foreign key constraints
+   - `subtitle_chunks` and `video_notes` cascade on video_id update
+   - `book_chapters` and `book_notes` cascade on book_id update
+   - Ensures related records auto-update when parent ID changes
+
+#### Files Changed
+
+- `frontend/lib/book-json-parser.ts` - New shared JSON parsing utilities
+- `frontend/components/book-add.tsx` - Refactored to use shared parser
+- `frontend/components/book-chunk-editor.tsx` - Added metadata editor and JSON import
+- `backend/api.py` - Added PUT /api/book/{book_id} endpoint
+- `backend/db/books_crud.py` - Added update_book_id() function
+- `backend/db/db_crud.py` - Added validate_book_id() function
+- `database_schema.sql` - Added ON UPDATE CASCADE to foreign keys
+- `books_schema.sql` - Added ON UPDATE CASCADE to foreign keys
+
 ## [2025-10-18] - Fixed Lecture Prompt Selection in Field Regeneration 🔧
 
 ### Fixed - Wrong Prompts Used When Regenerating Lecture Fields

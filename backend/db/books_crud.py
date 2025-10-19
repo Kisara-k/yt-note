@@ -196,6 +196,45 @@ def update_book(
         return None
 
 
+def update_book_id(old_book_id: str, new_book_id: str) -> bool:
+    """
+    Update book ID (assumes CASCADE is set up in database for related tables)
+    
+    Args:
+        old_book_id: Current book identifier
+        new_book_id: New book identifier
+        
+    Returns:
+        True if updated successfully, False otherwise
+    """
+    try:
+        # Check if old book exists
+        old_book = get_book_by_id(old_book_id)
+        if not old_book:
+            print(f"[DB!!] Book {old_book_id} not found")
+            return False
+        
+        # Check if new ID already exists
+        existing_book = get_book_by_id(new_book_id)
+        if existing_book:
+            print(f"[DB!!] Book {new_book_id} already exists")
+            return False
+        
+        print(f"[DB->] UPDATE books SET id={new_book_id} WHERE id={old_book_id}")
+        response = supabase.table("books").update({"id": new_book_id}).eq("id", old_book_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"[DB<-] Updated book ID from {old_book_id} to {new_book_id}")
+            return True
+        else:
+            print(f"[DB!!] Failed to update book ID")
+            return False
+            
+    except Exception as e:
+        print(f"[DB!!] {str(e)}")
+        return False
+
+
 def delete_book(book_id: str) -> bool:
     """
     Delete a book (cascades to chapters, but NOT book_notes)

@@ -4,6 +4,7 @@ Using: Supabase Python Client Library (recommended for persistent apps)
 """
 
 import os
+import re
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -14,6 +15,25 @@ load_dotenv()
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
+
+
+def validate_book_id(book_id: str) -> bool:
+    """
+    Validate book ID format
+    
+    Args:
+        book_id: Book identifier to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    if not book_id or not isinstance(book_id, str):
+        return False
+    
+    # Allow lowercase letters, numbers, and underscores only
+    # Must start with a letter or number, and be between 1-100 characters
+    pattern = r'^[a-z0-9][a-z0-9_]{0,99}$'
+    return bool(re.match(pattern, book_id))
 
 
 def create_note(title: str, content: str):

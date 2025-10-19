@@ -56,7 +56,9 @@ from db.books_crud import (
     create_book,
     get_book_by_id,
     get_all_books,
-    delete_book
+    delete_book,
+    update_book,
+    update_book_id
 )
 from db.book_chapters_crud import (
     create_chapter,
@@ -1028,6 +1030,70 @@ async def get_book_endpoint(book_id: str, current_user: dict = Depends(get_curre
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
         return book
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/book/{book_id}")
+async def update_book_endpoint(
+    book_id: str, 
+    request: dict, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Update book metadata"""
+    try:
+        # Check if book exists
+        existing_book = get_book_by_id(book_id)
+        if not existing_book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        
+        # If new_book_id is provided, check it doesn't conflict with existing books
+        new_book_id = request.get("new_book_id")
+        if new_book_id and new_book_id != book_id:
+            # Validate new book ID
+            from db.db_crud import validate_book_id
+            if not validate_book_id(new_book_id):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid book ID format. Use lowercase letters, numbers, and underscores only."
+                )
+            
+            # Check if new ID already exists
+            conflicting_book = get_book_by_id(new_book_id)
+            if conflicting_book:
+                raise HTTPException(
+                    status_code=409, 
+                    detail=f"Book with ID '{new_book_id}' already exists"
+                )
+        
+        # Update book metadata
+        from db.books_crud import update_book, update_book_id
+        
+        # If book_id is changing, update it first (assumes cascade is set up)
+        if new_book_id and new_book_id != book_id:
+            success = update_book_id(book_id, new_book_id)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to update book ID")
+            book_id = new_book_id  # Use new ID for subsequent operations
+        
+        # Update other fields
+        updated_book = update_book(
+            book_id=book_id,
+            title=request.get("title"),
+            author=request.get("author"),
+            publisher=request.get("publisher"),
+            publication_year=request.get("publication_year"),
+            isbn=request.get("isbn"),
+            description=request.get("description"),
+            tags=request.get("tags")
+        )
+        
+        if not updated_book:
+            raise HTTPException(status_code=500, detail="Failed to update book")
+        
+        return updated_book
     except HTTPException:
         raise
     except Exception as e:

@@ -25,12 +25,22 @@ import {
   Edit,
   X,
   GripVertical,
+  Upload,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChunkTextToggle } from '@/components/chunk-text-toggle';
+import { parseAndNormalizeChapters } from '@/lib/book-json-parser';
+import { validateAndNormalizeBookId } from '@/lib/book-id-validation';
 
 interface Chapter {
   chapter_id: number;
@@ -41,6 +51,18 @@ interface Chapter {
   updated_at?: string;
 }
 
+interface BookMetadata {
+  id: string;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  publication_year: number | null;
+  isbn: string | null;
+  description: string | null;
+  tags: string[];
+  type: string;
+}
+
 interface BookChunkEditorProps {
   bookId: string | null;
 }
@@ -49,6 +71,9 @@ export function BookChunkEditor({
   bookId: initialBookId,
 }: BookChunkEditorProps) {
   const [bookId, setBookId] = useState(initialBookId || '');
+  const [bookMetadata, setBookMetadata] = useState<BookMetadata | null>(null);
+  const [savingBookMetadata, setSavingBookMetadata] = useState(false);
+  const [bookIdError, setBookIdError] = useState('');
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState<Record<number, boolean>>({});
@@ -62,6 +87,9 @@ export function BookChunkEditor({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [chaptersJson, setChaptersJson] = useState('');
+  const [importing, setImporting] = useState(false);
   const { getAccessToken } = useAuth();
   const { showChunkText } = useSettings();
   const router = useRouter();
@@ -69,9 +97,44 @@ export function BookChunkEditor({
   useEffect(() => {
     if (initialBookId) {
       setBookId(initialBookId);
-      loadChapters(initialBookId);
+      loadBook(initialBookId);
     }
   }, [initialBookId]);
+
+  const loadBook = async (book_id: string) => {
+    await Promise.all([loadBookMetadata(book_id), loadChapters(book_id)]);
+  };
+
+  const loadBookMetadata = async (book_id: string) => {
+    if (!book_id.trim()) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:8000/api/book/${book_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to load book metadata');
+      }
+
+      const data = await response.json();
+      setBookMetadata(data);
+    } catch (error) {
+      console.error('Error loading book metadata:', error);
+      toast.error('Failed to load book metadata');
+    }
+  };
 
   const loadChapters = async (book_id: string) => {
     if (!book_id.trim()) return;
@@ -322,6 +385,92 @@ export function BookChunkEditor({
     setSelectedChapterId(newChapterId);
   };
 
+  const openImportDialog = () => {
+    setImportDialogOpen(true);
+    setChaptersJson('');
+  };
+
+  const closeImportDialog = () => {
+    setImportDialogOpen(false);
+    setChaptersJson('');
+  };
+
+  const handleImportChapters = async () => {
+    if (!chaptersJson.trim()) {
+      toast.error('Please enter chapters JSON');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      // Use the shared parser and normalizer
+      const normalizedChapters = parseAndNormalizeChapters(chaptersJson);
+
+      // Determine the next chapter ID
+      const nextChapterId =
+        chapters.length > 0
+          ? Math.max(...chapters.map((ch) => ch.chapter_id)) + 1
+          : 1;
+
+      // Import chapters sequentially
+      let successCount = 0;
+      const newChapters: Chapter[] = [];
+
+      for (let i = 0; i < normalizedChapters.length; i++) {
+        const chapter = normalizedChapters[i];
+        const chapterId = nextChapterId + i;
+
+        const response = await fetch(
+          `http://localhost:8000/api/book/${bookId}/chapter/${chapterId}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              chapter_title: chapter.title,
+              chapter_text: chapter.content,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to import chapter ${i + 1}: ${chapter.title}`
+          );
+        }
+
+        const data = await response.json();
+        newChapters.push(data);
+        successCount++;
+      }
+
+      // Reload chapters to reflect the new state
+      await loadChapters(bookId);
+
+      toast.success(
+        `Successfully imported ${successCount} chapter${
+          successCount > 1 ? 's' : ''
+        }`
+      );
+      closeImportDialog();
+    } catch (error) {
+      console.error('Error importing chapters:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to import chapters'
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // Drag-and-drop handlers
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
@@ -402,8 +551,91 @@ export function BookChunkEditor({
       // Only reload if we're changing to a different book
       if (bookId !== initialBookId) {
         router.push(`/book/chunks?b=${bookId}`);
-        loadChapters(bookId);
+        loadBook(bookId);
       }
+    }
+  };
+
+  const handleSaveBookMetadata = async () => {
+    if (!bookMetadata) return;
+
+    setSavingBookMetadata(true);
+    setBookIdError('');
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      // Validate new book ID if it changed
+      let newBookId = bookMetadata.id;
+      if (newBookId !== bookId) {
+        const { isValid, normalized, error } =
+          validateAndNormalizeBookId(newBookId);
+        if (!isValid) {
+          setBookIdError(error || 'Invalid book ID');
+          toast.error(error || 'Invalid book ID');
+          return;
+        }
+        newBookId = normalized;
+      }
+
+      const response = await fetch(`http://localhost:8000/api/book/${bookId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          new_book_id: newBookId !== bookId ? newBookId : undefined,
+          title: bookMetadata.title,
+          author: bookMetadata.author,
+          publisher: bookMetadata.publisher,
+          publication_year: bookMetadata.publication_year,
+          isbn: bookMetadata.isbn,
+          description: bookMetadata.description,
+          tags: bookMetadata.tags,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        const errorMessage =
+          typeof error.detail === 'string'
+            ? error.detail
+            : error.error || error.message || 'Failed to update book';
+
+        // Handle duplicate book ID error specifically
+        if (
+          response.status === 409 ||
+          errorMessage.includes('already exists')
+        ) {
+          setBookIdError(errorMessage);
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const updatedBook = await response.json();
+      setBookMetadata(updatedBook);
+      toast.success('Book metadata updated successfully');
+
+      // If book ID changed, update URL and state without reloading
+      if (newBookId !== bookId) {
+        setBookId(newBookId);
+        // Update URL without navigation/reload
+        window.history.replaceState(null, '', `/book/chunks?b=${newBookId}`);
+      }
+    } catch (error) {
+      console.error('Error updating book metadata:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update book metadata'
+      );
+    } finally {
+      setSavingBookMetadata(false);
     }
   };
 
@@ -454,6 +686,201 @@ export function BookChunkEditor({
           </Card>
         )}
 
+        {/* Book Metadata Editor */}
+        {bookMetadata && !loading && (
+          <Card className='mb-6'>
+            <CardHeader>
+              <div className='flex items-center justify-between'>
+                <CardTitle>Book Metadata</CardTitle>
+                <Button
+                  size='sm'
+                  onClick={handleSaveBookMetadata}
+                  disabled={savingBookMetadata}
+                >
+                  {savingBookMetadata ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className='mr-2 h-4 w-4' />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-4'>
+                {/* First Row: Book ID, Title, Author, Type */}
+                <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+                  <div>
+                    <Label htmlFor='edit-book-id'>
+                      Book ID *{' '}
+                      <span className='text-xs text-muted-foreground'>
+                        (lowercase, underscores)
+                      </span>
+                    </Label>
+                    <Input
+                      id='edit-book-id'
+                      value={bookMetadata.id}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          id: e.target.value,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                      className={bookIdError ? 'border-red-500' : ''}
+                    />
+                    {bookIdError && (
+                      <p className='text-sm text-red-500 mt-1'>{bookIdError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-title'>Title *</Label>
+                    <Input
+                      id='edit-title'
+                      value={bookMetadata.title}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          title: e.target.value,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-author'>Author</Label>
+                    <Input
+                      id='edit-author'
+                      value={bookMetadata.author || ''}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          author: e.target.value || null,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-type'>Type</Label>
+                    <Select
+                      value={bookMetadata.type}
+                      onValueChange={(value) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          type: value,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    >
+                      <SelectTrigger id='edit-type'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='book'>Book</SelectItem>
+                        <SelectItem value='lecture'>Lecture</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Second Row: Publisher, Year, ISBN, Tags */}
+                <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+                  <div>
+                    <Label htmlFor='edit-publisher'>Publisher</Label>
+                    <Input
+                      id='edit-publisher'
+                      value={bookMetadata.publisher || ''}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          publisher: e.target.value || null,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-year'>Publication Year</Label>
+                    <Input
+                      id='edit-year'
+                      type='number'
+                      value={bookMetadata.publication_year || ''}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          publication_year: e.target.value
+                            ? parseInt(e.target.value)
+                            : null,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-isbn'>ISBN</Label>
+                    <Input
+                      id='edit-isbn'
+                      value={bookMetadata.isbn || ''}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          isbn: e.target.value || null,
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor='edit-tags'>
+                      Tags{' '}
+                      <span className='text-xs text-muted-foreground'>
+                        (comma-separated)
+                      </span>
+                    </Label>
+                    <Input
+                      id='edit-tags'
+                      value={bookMetadata.tags?.join(', ') || ''}
+                      onChange={(e) =>
+                        setBookMetadata({
+                          ...bookMetadata,
+                          tags: e.target.value
+                            ? e.target.value.split(',').map((tag) => tag.trim())
+                            : [],
+                        })
+                      }
+                      disabled={savingBookMetadata}
+                      placeholder='tag1, tag2, tag3'
+                    />
+                  </div>
+                </div>
+
+                {/* Third Row: Description (full width) */}
+                <div>
+                  <Label htmlFor='edit-description'>Description</Label>
+                  <Textarea
+                    id='edit-description'
+                    value={bookMetadata.description || ''}
+                    onChange={(e) =>
+                      setBookMetadata({
+                        ...bookMetadata,
+                        description: e.target.value || null,
+                      })
+                    }
+                    disabled={savingBookMetadata}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {loading ? (
           <div className='flex items-center justify-center p-12'>
             <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
@@ -465,10 +892,20 @@ export function BookChunkEditor({
               <CardHeader>
                 <div className='flex items-center justify-between'>
                   <CardTitle>Chapters ({chapters.length})</CardTitle>
-                  <Button size='sm' onClick={handleAddChapter}>
-                    <Plus className='h-4 w-4 mr-2' />
-                    Add Chapter
-                  </Button>
+                  <div className='flex gap-2'>
+                    <Button size='sm' onClick={handleAddChapter}>
+                      <Plus className='h-4 w-4 mr-2' />
+                      Add Chapter
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={openImportDialog}
+                    >
+                      <Upload className='h-4 w-4 mr-2' />
+                      Import JSON
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -685,6 +1122,68 @@ export function BookChunkEditor({
                 </>
               ) : (
                 'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Chapters Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={closeImportDialog}>
+        <DialogContent className='max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>Import Chapters from JSON</DialogTitle>
+            <DialogDescription>
+              Add chapters from a JSON file. The chapters will be appended to
+              the existing chapters.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='import-chapters'>Chapters JSON</Label>
+              <Textarea
+                id='import-chapters'
+                placeholder={
+                  '[\n  {\n    "title": "Chapter Title",\n    "content": "Chapter content here..."\n  },\n  {\n    "title": "Another Chapter",\n    "content": "More content..."\n  }\n]'
+                }
+                value={chaptersJson}
+                onChange={(e) => setChaptersJson(e.target.value)}
+                disabled={importing}
+                rows={15}
+                className='font-mono text-sm'
+              />
+              <p className='text-sm text-muted-foreground'>
+                JSON array with &quot;title&quot; and &quot;content&quot; for
+                each chapter. Accepts multiple formats: array [{'{'}...{'}'}],
+                comma-separated {'{'}...{'}'}, {'{'}...{'}'}, or line-separated{' '}
+                {'{'}...{'}'}
+                {'\n'}
+                {'{'}...{'}'}.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={closeImportDialog}
+              disabled={importing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImportChapters}
+              disabled={importing || !chaptersJson.trim()}
+            >
+              {importing ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className='mr-2 h-4 w-4' />
+                  Import Chapters
+                </>
               )}
             </Button>
           </DialogFooter>
