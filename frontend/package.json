@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "tsx lib/generate-tiptap-css.ts",
-    "predev": "tsx lib/generate-tiptap-css.ts",
+    "predev": "npx tsx lib/generate-tiptap-css.ts",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
