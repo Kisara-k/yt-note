@@ -38,6 +38,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -87,7 +88,7 @@ export function BookFilter() {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/books', {
+      const response = await fetch(`${API_BASE_URL}/api/books`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -140,7 +141,7 @@ export function BookFilter() {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/book/${bookToDelete.id}`,
+        `${API_BASE_URL}/api/book/${bookToDelete.id}`,
         {
           method: 'DELETE',
           headers: {
@@ -465,9 +466,9 @@ export function BookFilter() {
           <DialogHeader>
             <DialogTitle>Delete Book</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{bookToDelete?.title}"? This
-              action cannot be undone. All chapters will be deleted, but your
-              notes will be preserved.
+              Are you sure you want to delete &ldquo;{bookToDelete?.title}
+              &rdquo;? This action cannot be undone. All chapters will be
+              deleted, but your notes will be preserved.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

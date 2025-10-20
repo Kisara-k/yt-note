@@ -66,7 +66,7 @@ export function parseFlexibleJSON(jsonStr: string): any[] {
         objects.push(JSON.parse(cleanLine));
       } else if (trimmed.startsWith('{')) {
         // Handle multi-line objects - collect until we find closing brace
-        let objStr = trimmed;
+        const objStr = trimmed;
         // This is a simplified approach - for complex cases, wrapping in [] already works
         objects.push(JSON.parse(objStr));
       }

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Filter } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/config';
 import { useRouter } from 'next/navigation';
 import { validateAndNormalizeBookId } from '@/lib/book-id-validation';
 import { parseAndNormalizeChapters } from '@/lib/book-json-parser';
@@ -65,7 +66,7 @@ export function BookAdd() {
       // Use the shared parser and normalizer
       const normalizedChapters = parseAndNormalizeChapters(chaptersJson);
 
-      const response = await fetch('http://localhost:8000/api/book', {
+      const response = await fetch(`${API_BASE_URL}/api/book`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

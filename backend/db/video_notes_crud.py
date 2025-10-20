@@ -12,9 +12,9 @@ from datetime import datetime
 # Load environment variables from backend/.env (searches up the directory tree)
 load_dotenv()
 
-# Initialize Supabase client
+# Initialize Supabase client with SERVICE ROLE key (server-only, bypasses RLS)
 url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+key: str = os.getenv("SUPABASE_SERVICE_KEY")
 supabase: Client = create_client(url, key)
 
 

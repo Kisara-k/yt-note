@@ -28,8 +28,9 @@ def main():
     print("="*70 + "\n")
     
     # Server configuration
+    # Railway sets PORT, fall back to API_PORT or 8000
     host = os.getenv("API_HOST", "0.0.0.0")
-    port = int(os.getenv("API_PORT", "8000"))
+    port = int(os.getenv("PORT") or os.getenv("API_PORT", "8000"))
     reload = os.getenv("API_RELOAD", "true").lower() == "true"
     
     print(f"📡 Starting server at http://{host}:{port}")

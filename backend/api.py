@@ -79,9 +79,16 @@ from db.book_notes_crud import (
 
 app = FastAPI(title="YouTube Notes API", version="2.0.0")
 
+# Configure CORS - allow both local development and production origins
+allowed_origins_str = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://localhost:3001"
+)
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -179,6 +186,28 @@ class VerifyEmailResponse(BaseModel):
     message: str
 
 
+class SignInRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SignUpRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class AuthResponse(BaseModel):
+    user: Dict[str, Any]
+    access_token: str
+    refresh_token: str
+    expires_at: Optional[int] = None
+    message: Optional[str] = None
+
+
 # Utility Functions for JSON Cleaning
 def clean_json_string(json_str: str) -> str:
     """
@@ -254,11 +283,148 @@ async def root():
 
 @app.post("/api/auth/verify-email", response_model=VerifyEmailResponse)
 async def verify_email(request: VerifyEmailRequest):
+    """Check if an email is in the verified list"""
     is_verified = is_email_verified(request.email)
     return VerifyEmailResponse(
         is_verified=is_verified,
         message="Email is verified" if is_verified else "Email not authorized"
     )
+
+
+@app.post("/api/auth/signin")
+async def sign_in(request: SignInRequest):
+    """
+    Sign in a user (backend-only authentication)
+    No Supabase credentials exposed to frontend
+    """
+    try:
+        # First, verify the email is in the allowed list
+        if not is_email_verified(request.email):
+            raise HTTPException(
+                status_code=403,
+                detail="This email is not authorized to access the application"
+            )
+        
+        # Import auth functions
+        from auth.supabase_auth import sign_in_user
+        
+        # Perform sign-in on backend
+        result = sign_in_user(request.email, request.password)
+        
+        return {
+            "user": result["user"],
+            "access_token": result["access_token"],
+            "refresh_token": result["refresh_token"],
+            "expires_at": result.get("expires_at"),
+            "message": "Sign-in successful"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        if "Invalid email or password" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Email not confirmed" in error_msg:
+            raise HTTPException(status_code=403, detail=error_msg)
+        else:
+            raise HTTPException(status_code=400, detail=error_msg)
+
+
+@app.post("/api/auth/signup")
+async def sign_up(request: SignUpRequest):
+    """
+    Sign up a new user (backend-only authentication)
+    No Supabase credentials exposed to frontend
+    """
+    try:
+        # First, verify the email is in the allowed list
+        if not is_email_verified(request.email):
+            raise HTTPException(
+                status_code=403,
+                detail="This email is not authorized to access the application"
+            )
+        
+        # Import auth functions
+        from auth.supabase_auth import sign_up_user
+        
+        # Perform sign-up on backend
+        result = sign_up_user(request.email, request.password)
+        
+        response = {
+            "user": result["user"],
+            "message": result["message"]
+        }
+        
+        # Include tokens if available (email confirmation disabled)
+        if "access_token" in result:
+            response["access_token"] = result["access_token"]
+            response["refresh_token"] = result["refresh_token"]
+            response["expires_at"] = result.get("expires_at")
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        if "already registered" in error_msg.lower():
+            raise HTTPException(status_code=409, detail=error_msg)
+        elif "weak" in error_msg.lower():
+            raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=400, detail=error_msg)
+
+
+@app.post("/api/auth/refresh")
+async def refresh_access_token(request: RefreshTokenRequest):
+    """
+    Refresh an expired access token
+    """
+    try:
+        from auth.supabase_auth import refresh_token
+        
+        result = refresh_token(request.refresh_token)
+        
+        return {
+            "user": result["user"],
+            "access_token": result["access_token"],
+            "refresh_token": result["refresh_token"],
+            "expires_at": result.get("expires_at"),
+            "message": "Token refreshed successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
+
+
+@app.post("/api/auth/signout")
+async def sign_out(current_user: dict = Depends(get_current_user)):
+    """
+    Sign out the current user
+    """
+    try:
+        from auth.supabase_auth import sign_out_user
+        
+        # Get token from request (already validated by get_current_user)
+        # Note: We could revoke the token here, but for stateless JWT,
+        # the client simply needs to delete the token
+        
+        return {"message": "Sign-out successful"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Sign-out failed: {str(e)}")
+
+
+@app.get("/api/auth/me")
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """
+    Get current user information from JWT token
+    """
+    return {
+        "user": current_user,
+        "message": "User authenticated"
+    }
 
 
 @app.post("/api/video", response_model=VideoResponse)
