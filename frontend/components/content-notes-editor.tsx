@@ -25,6 +25,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/config';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CustomTooltip } from '@/components/custom-tooltip';
 import { useBulkAIPolling } from '@/lib/use-bulk-ai-polling';
@@ -172,8 +173,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       }
 
       const endpoint = isVideo
-        ? `http://localhost:8000/api/video/${normalizedId}`
-        : `http://localhost:8000/api/book/${normalizedId}`;
+        ? `${API_BASE_URL}/api/video/${normalizedId}`
+        : `${API_BASE_URL}/api/book/${normalizedId}`;
 
       const response = await fetch(endpoint, {
         headers: {
@@ -188,8 +189,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       const data: VideoInfo | BookInfo = await response.json();
 
       const noteEndpoint = isVideo
-        ? `http://localhost:8000/api/note/${normalizedId}`
-        : `http://localhost:8000/api/book/${normalizedId}/note`;
+        ? `${API_BASE_URL}/api/note/${normalizedId}`
+        : `${API_BASE_URL}/api/book/${normalizedId}/note`;
 
       const notePromise = fetch(noteEndpoint, {
         headers: {
@@ -242,7 +243,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
         return;
       }
 
-      const videoResponse = await fetch('http://localhost:8000/api/video', {
+      const videoResponse = await fetch(`${API_BASE_URL}/api/video`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +264,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       const videoData: VideoInfo = await videoResponse.json();
 
       const notePromise = fetch(
-        `http://localhost:8000/api/note/${videoData.video_id}`,
+        `${API_BASE_URL}/api/note/${videoData.video_id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -326,8 +327,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
         : (contentInfo as BookInfo).id;
 
       const endpoint = isVideo
-        ? 'http://localhost:8000/api/note'
-        : 'http://localhost:8000/api/book/note';
+        ? `${API_BASE_URL}/api/note`
+        : `${API_BASE_URL}/api/book/note`;
 
       const body = isVideo
         ? {
@@ -385,14 +386,11 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       const token = await getAccessToken();
       if (!token) return { hasChunks: false, count: 0 };
 
-      const response = await fetch(
-        `http://localhost:8000/api/chunks/${video_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/chunks/${video_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -423,8 +421,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
       if (!token) return null;
 
       const endpoint = isVideo
-        ? `http://localhost:8000/api/chunks/${id}/ai-status`
-        : `http://localhost:8000/api/book/${id}/chapters/ai-status`;
+        ? `${API_BASE_URL}/api/chunks/${id}/ai-status`
+        : `${API_BASE_URL}/api/book/${id}/chapters/ai-status`;
 
       const response = await fetch(endpoint, {
         headers: {
@@ -475,7 +473,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
 
       const videoId = (contentInfo as VideoInfo).video_id;
       const response = await fetch(
-        'http://localhost:8000/api/jobs/process-subtitles',
+        `${API_BASE_URL}/api/jobs/process-subtitles`,
         {
           method: 'POST',
           headers: {
@@ -555,8 +553,8 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
         : (contentInfo as BookInfo).id;
 
       const endpoint = isVideo
-        ? 'http://localhost:8000/api/jobs/process-video-all-chunks-ai'
-        : 'http://localhost:8000/api/jobs/process-book-all-chapters-ai';
+        ? `${API_BASE_URL}/api/jobs/process-video-all-chunks-ai`
+        : `${API_BASE_URL}/api/jobs/process-book-all-chapters-ai`;
 
       const body = isVideo ? { video_id: id } : { book_id: id };
 
@@ -652,7 +650,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
             return;
           }
 
-          const videoResponse = await fetch('http://localhost:8000/api/video', {
+          const videoResponse = await fetch(`${API_BASE_URL}/api/video`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -664,7 +662,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
           if (videoResponse.ok) {
             const videoData: VideoInfo = await videoResponse.json();
             const notePromise = fetch(
-              `http://localhost:8000/api/note/${videoData.video_id}`,
+              `${API_BASE_URL}/api/note/${videoData.video_id}`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,

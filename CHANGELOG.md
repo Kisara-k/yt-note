@@ -2,6 +2,158 @@
 
 All notable changes to the YouTube Notes application.
 
+## [2025-10-20] - Production Deployment Preparation & Zero-Credential Frontend 🚀🔒
+
+### Production Deployment Refactoring (Railway + Vercel)
+
+**Refactored entire codebase to remove hardcoded localhost values and prepare for production deployment**
+
+#### Deployment Infrastructure
+
+1. **Centralized Configuration**
+
+   - Created `frontend/lib/config.ts` - single source of truth for `API_BASE_URL`
+   - Environment-based configuration: `NEXT_PUBLIC_BACKEND_URL` (defaults to `http://localhost:8000`)
+   - Updated 10+ components to import from centralized config
+   - Updated 8 API routes to use `NEXT_PUBLIC_BACKEND_URL`
+
+2. **Backend CORS Configuration**
+
+   - Updated `backend/api.py` with environment-based CORS origins
+   - New `CORS_ORIGINS` environment variable (comma-separated list)
+   - Default: `http://localhost:3000,http://localhost:8000`
+   - Production: Vercel frontend URL + Railway backend URL
+
+3. **Railway Backend Configuration**
+
+   - Created `backend/railway.toml` - Railway platform configuration
+   - Created `backend/nixpacks.toml` - Build configuration with Python 3.13
+   - Created `backend/Procfile` - Start command configuration
+   - Environment variables documented for Railway deployment
+
+4. **Vercel Frontend Configuration**
+   - Updated `frontend/vercel.json` - Build settings and environment variables
+   - Framework: Next.js with automatic detection
+   - Single required env var: `NEXT_PUBLIC_BACKEND_URL`
+
+#### Comprehensive Documentation
+
+1. **Deployment Guides**
+
+   - `DEPLOYMENT.md` - Complete production deployment guide
+     - Railway backend setup with step-by-step instructions
+     - Vercel frontend setup with configuration details
+     - Supabase RLS configuration
+     - Environment variable reference
+     - Testing and troubleshooting sections
+   - `MIGRATION_CHECKLIST.md` - Step-by-step migration checklist
+   - `ARCHITECTURE.md` - System architecture and data flow
+   - `QUICKSTART.md` - Quick start guide for new developers
+   - `REFACTORING_SUMMARY.md` - Summary of all refactoring changes
+
+2. **Security Documentation**
+   - `backend/.docs/RAILWAY_SECURITY_SETUP.md` - Railway security configuration
+   - `backend/.docs/RLS_SETUP.md` - Row Level Security setup guide
+   - `backend/.docs/RLS_EXAMPLES.md` - RLS policy examples
+
+### Zero-Credential Frontend Implementation
+
+**Eliminated all Supabase credentials from frontend for maximum security**
+
+#### Backend-Only Authentication
+
+1. **Server-Side Authentication Module**
+
+   - Created `backend/auth/supabase_auth.py` with functions:
+     - `sign_in_user()` - Email/password authentication
+     - `sign_up_user()` - User registration
+     - `refresh_token()` - Token refresh
+     - `sign_out_user()` - User logout
+     - `get_user_from_token()` - Token validation
+   - Uses `SUPABASE_SERVICE_KEY` (server-only, never exposed)
+
+2. **New Authentication Endpoints** (`backend/api.py`)
+
+   - `POST /api/auth/signin` - Sign in with email/password
+   - `POST /api/auth/signup` - Register new user
+   - `POST /api/auth/refresh` - Refresh access token
+   - `POST /api/auth/signout` - Sign out user
+   - `GET /api/auth/me` - Get current user info
+   - All endpoints return JWT tokens for frontend storage
+
+3. **Frontend Authentication Refactor**
+
+   - Rewrote `frontend/lib/auth-context.tsx` (184→220 lines)
+   - Removed ALL `@supabase/supabase-js` dependencies
+   - Implemented localStorage token management:
+     - `yt_notes_access_token` - Access token
+     - `yt_notes_refresh_token` - Refresh token
+     - `yt_notes_user` - User info (JSON)
+   - Automatic token refresh with `tryRefreshToken()`
+   - Session persistence across page reloads
+
+4. **Configuration Cleanup**
+   - Removed `SUPABASE_URL` and `SUPABASE_ANON_KEY` from `frontend/lib/config.ts`
+   - Cleaned `frontend/.env.local` - only `NEXT_PUBLIC_BACKEND_URL` needed
+   - Updated `frontend/.env.local.example` with zero-credential documentation
+   - Updated `frontend/vercel.json` - removed Supabase env vars
+   - Removed `@supabase/supabase-js` from `frontend/package.json`
+
+#### Bug Fixes
+
+1. **Template Literal Corrections**
+   - Fixed 7 bugs where single quotes were used instead of backticks:
+     - `content-notes-editor.tsx` (5 locations)
+     - `book-filter.tsx` (1 location)
+     - `book-add.tsx` (1 location)
+   - All 80+ `API_BASE_URL` usages now use correct backtick syntax
+
+#### Security Improvements
+
+**Environment Variables:**
+
+- **Frontend (Vercel)**: `NEXT_PUBLIC_BACKEND_URL` only ✅
+- **Backend (Railway)**: `SUPABASE_SERVICE_KEY`, `CORS_ORIGINS`, etc. ✅
+- **Zero credentials exposed** to browser ✅
+
+**Benefits:**
+
+- Frontend cannot access database directly (impossible without credentials)
+- All authentication flows through backend API with validation
+- Centralized rate limiting and business logic
+- Easy to migrate databases (users don't see implementation)
+- RLS enabled for defense in depth
+
+**Tradeoffs:**
+
+- Slightly higher latency (~100-200ms) through backend hop
+- No real-time Supabase subscriptions (not needed for this app)
+
+#### Documentation
+
+1. **New Files**
+
+   - `ZERO_CREDENTIAL_FRONTEND.md` - Complete guide to zero-credential implementation
+     - Authentication flow diagrams
+     - API endpoint reference
+     - Migration steps
+     - Before/after comparison
+
+2. **Helper Scripts**
+   - `migrate-to-zero-credentials.ps1` - Migration verification helper
+   - `rebuild-frontend.ps1` - Clean build to remove cached credentials
+
+#### Verification
+
+- ✅ No Supabase URLs in built frontend bundle
+- ✅ No Supabase anon keys in built frontend bundle
+- ✅ Frontend build successful with zero credentials
+- ✅ All API calls use correct template literal syntax
+- ✅ Backend CORS configured for production origins
+- ✅ Railway and Vercel configurations complete
+
+---
+
 ## [2025-10-19] - Book Metadata Editor & Chapter Import via JSON 📚
 
 ### Added Book Chunk Editor Enhancements
@@ -11,6 +163,7 @@ All notable changes to the YouTube Notes application.
 #### New Features
 
 1. **Book Metadata Editor**
+
    - Always-on edit mode for book metadata at top of chunk editor page
    - Compact layout: 4 fields per row (Book ID, Title, Author, Type), then 4 fields (Publisher, Year, ISBN, Tags), then Description
    - Book ID editing with validation and conflict detection
@@ -20,6 +173,7 @@ All notable changes to the YouTube Notes application.
    - Single "Save Changes" button for all metadata updates
 
 2. **Import Chapters via JSON**
+
    - New "Import JSON" button next to "Add Chapter" in chunk editor
    - Accepts same JSON formats as book upload (array, comma-separated, line-separated)
    - Appends chapters to existing chapters with sequential IDs
@@ -37,6 +191,7 @@ All notable changes to the YouTube Notes application.
 #### Backend Changes
 
 1. **Book Update Endpoint**
+
    - Added `PUT /api/book/{book_id}` endpoint
    - Supports updating all book metadata fields including book_id
    - Book ID validation with `validate_book_id()` function in `db_crud.py`
@@ -44,6 +199,7 @@ All notable changes to the YouTube Notes application.
    - Calls `update_book_id()` function with cascade support
 
 2. **Database Functions**
+
    - `update_book_id()` in `books_crud.py` - updates book ID with cascade
    - `validate_book_id()` in `db_crud.py` - validates ID format (lowercase, underscores, 1-100 chars)
    - Both functions check for conflicts and existing records

@@ -80,7 +80,7 @@ Create `backend/db/.env`:
 ```env
 YOUTUBE_API_KEY=your_youtube_api_key_here
 SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_service_role_key
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key  # Use service role, NOT anon key
 SUPABASE_JWT_SECRET=your_jwt_secret
 API_HOST=0.0.0.0
 API_PORT=8000

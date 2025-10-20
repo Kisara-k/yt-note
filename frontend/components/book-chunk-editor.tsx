@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/config';
 import { useSettings } from '@/lib/settings-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -133,14 +134,11 @@ export function BookChunkEditor({
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:8000/api/book/${book_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/book/${book_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to load book metadata');
@@ -166,7 +164,7 @@ export function BookChunkEditor({
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/book/${book_id}/chapters`,
+        `${API_BASE_URL}/api/book/${book_id}/chapters`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -201,7 +199,7 @@ export function BookChunkEditor({
         if (!token) return '';
 
         const response = await fetch(
-          `http://localhost:8000/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
+          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -267,7 +265,7 @@ export function BookChunkEditor({
       if (isNewChapter) {
         // Create new chapter using POST
         response = await fetch(
-          `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}`,
+          `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}`,
           {
             method: 'POST',
             headers: {
@@ -285,7 +283,7 @@ export function BookChunkEditor({
         if (titleChanged && textChanged) {
           // Both changed - update title first, then text
           const titleResponse = await fetch(
-            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
             {
               method: 'PUT',
               headers: {
@@ -302,7 +300,7 @@ export function BookChunkEditor({
           }
 
           response = await fetch(
-            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
             {
               method: 'PUT',
               headers: {
@@ -317,7 +315,7 @@ export function BookChunkEditor({
         } else if (titleChanged) {
           // Only title changed
           response = await fetch(
-            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
             {
               method: 'PUT',
               headers: {
@@ -332,7 +330,7 @@ export function BookChunkEditor({
         } else if (textChanged) {
           // Only text changed
           response = await fetch(
-            `http://localhost:8000/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
             {
               method: 'PUT',
               headers: {
@@ -402,7 +400,7 @@ export function BookChunkEditor({
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/book/${bookId}/chapter/${chapterId}`,
+        `${API_BASE_URL}/api/book/${bookId}/chapter/${chapterId}`,
         {
           method: 'DELETE',
           headers: {
@@ -471,7 +469,7 @@ export function BookChunkEditor({
       const chapterOrder = newChapters.map((ch) => ch.chapter_id);
 
       const response = await fetch(
-        `http://localhost:8000/api/book/${bookId}/chapters/reorder`,
+        `${API_BASE_URL}/api/book/${bookId}/chapters/reorder`,
         {
           method: 'POST',
           headers: {
@@ -552,7 +550,7 @@ export function BookChunkEditor({
         const chapterId = nextChapterId + i;
 
         const response = await fetch(
-          `http://localhost:8000/api/book/${bookId}/chapter/${chapterId}`,
+          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapterId}`,
           {
             method: 'POST',
             headers: {
@@ -639,7 +637,7 @@ export function BookChunkEditor({
       const chapterOrder = chapters.map((ch) => ch.chapter_id);
 
       const response = await fetch(
-        `http://localhost:8000/api/book/${bookId}/chapters/reorder`,
+        `${API_BASE_URL}/api/book/${bookId}/chapters/reorder`,
         {
           method: 'POST',
           headers: {
@@ -706,7 +704,7 @@ export function BookChunkEditor({
         newBookId = normalized;
       }
 
-      const response = await fetch(`http://localhost:8000/api/book/${bookId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/book/${bookId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

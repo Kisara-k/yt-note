@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/config';
 import Link from 'next/link';
 
 interface VideoInfo {
@@ -170,7 +171,7 @@ export function VideoFilter() {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/video/${videoToDelete.id}`,
+        `${API_BASE_URL}/api/video/${videoToDelete.id}`,
         {
           method: 'DELETE',
           headers: {
@@ -559,9 +560,9 @@ export function VideoFilter() {
           <DialogHeader>
             <DialogTitle>Delete Video</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{videoToDelete?.title}"? This
-              action cannot be undone. All chunks will be deleted, but your
-              notes will be preserved.
+              Are you sure you want to delete &ldquo;{videoToDelete?.title}
+              &rdquo;? This action cannot be undone. All chunks will be deleted,
+              but your notes will be preserved.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
