@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -45,6 +45,23 @@ export function AIFieldDisplay({
   // Check if there are unsaved changes
   const hasUnsavedChanges = isEditing && editedContent !== originalContent;
 
+  // Define handleSaveEdit before useEffect
+  const handleSaveEdit = useCallback(async () => {
+    if (!onUpdate) return;
+
+    setIsSaving(true);
+    try {
+      await onUpdate(editedContent);
+      setIsEditing(false);
+      setOriginalContent('');
+    } catch (error) {
+      console.error('Failed to save edit:', error);
+      // Error handling is done in the parent component
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onUpdate, editedContent]);
+
   // Handle Ctrl+S to save changes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -60,7 +77,7 @@ export function AIFieldDisplay({
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isEditing, hasUnsavedChanges, isSaving, editedContent, originalContent]);
+  }, [isEditing, hasUnsavedChanges, isSaving, handleSaveEdit, onUpdate]);
 
   const handleEditClick = () => {
     setOriginalContent(content || '');
@@ -72,22 +89,6 @@ export function AIFieldDisplay({
     setEditedContent('');
     setOriginalContent('');
     setIsEditing(false);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!onUpdate) return;
-
-    setIsSaving(true);
-    try {
-      await onUpdate(editedContent);
-      setIsEditing(false);
-      setOriginalContent('');
-    } catch (error) {
-      console.error('Failed to save edit:', error);
-      // Error handling is done in the parent component
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const scrollbarClasses =

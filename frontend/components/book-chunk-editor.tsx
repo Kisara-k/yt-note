@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,6 @@ import {
   Save,
   ArrowUp,
   ArrowDown,
-  Edit,
   X,
   GripVertical,
   Upload,
@@ -87,7 +86,6 @@ export function BookChunkEditor({
   const [textChanged, setTextChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -98,33 +96,7 @@ export function BookChunkEditor({
   const { showChunkText } = useSettings();
   const router = useRouter();
 
-  useEffect(() => {
-    if (initialBookId) {
-      setBookId(initialBookId);
-      loadBook(initialBookId);
-    }
-  }, [initialBookId]);
-
-  // Ctrl+S to save
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (editingChapter && (titleChanged || textChanged)) {
-          handleSaveChapter();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingChapter, titleChanged, textChanged]);
-
-  const loadBook = async (book_id: string) => {
-    await Promise.all([loadBookMetadata(book_id), loadChapters(book_id)]);
-  };
-
-  const loadBookMetadata = async (book_id: string) => {
+  const loadBookMetadata = useCallback(async (book_id: string) => {
     if (!book_id.trim()) return;
 
     try {
@@ -150,9 +122,9 @@ export function BookChunkEditor({
       console.error('Error loading book metadata:', error);
       toast.error('Failed to load book metadata');
     }
-  };
+  }, [getAccessToken]);
 
-  const loadChapters = async (book_id: string) => {
+  const loadChapters = useCallback(async (book_id: string) => {
     if (!book_id.trim()) return;
 
     setLoading(true);
@@ -184,66 +156,20 @@ export function BookChunkEditor({
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken]);
 
-  const loadChapterText = async (chapter: Chapter) => {
-    // If showChunkText is false, don't load the text
-    if (!showChunkText) {
-      return '';
+  const loadBook = useCallback(async (book_id: string) => {
+    await Promise.all([loadBookMetadata(book_id), loadChapters(book_id)]);
+  }, [loadBookMetadata, loadChapters]);
+
+  useEffect(() => {
+    if (initialBookId) {
+      setBookId(initialBookId);
+      loadBook(initialBookId);
     }
+  }, [initialBookId, loadBook]);
 
-    if (!chapter.chapter_text && chapter.chapter_text_path) {
-      setLoadingText((prev) => ({ ...prev, [chapter.chapter_id]: true }));
-      try {
-        const token = await getAccessToken();
-        if (!token) return '';
-
-        const response = await fetch(
-          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to load chapter text');
-        }
-
-        const data = await response.json();
-        return data.chapter_text || '';
-      } catch (error) {
-        console.error('Error loading chapter text:', error);
-        toast.error('Failed to load chapter text');
-        return '';
-      } finally {
-        setLoadingText((prev) => ({ ...prev, [chapter.chapter_id]: false }));
-      }
-    }
-    return chapter.chapter_text || '';
-  };
-
-  const handleEditChapter = async (chapter: Chapter) => {
-    // Immediately show the chapter in the editor (responsive UI)
-    setSelectedChapterId(chapter.chapter_id);
-    const initialChapter = {
-      ...chapter,
-      chapter_text: chapter.chapter_text || '',
-    };
-    setEditingChapter(initialChapter);
-    setOriginalChapter(initialChapter);
-    setTitleChanged(false);
-    setTextChanged(false);
-
-    // Then fetch the text if needed
-    const text = await loadChapterText(chapter);
-    const fullChapter = { ...chapter, chapter_text: text };
-    setEditingChapter(fullChapter);
-    setOriginalChapter(fullChapter);
-  };
-
-  const handleSaveChapter = async () => {
+  const handleSaveChapter = useCallback(async () => {
     if (!editingChapter || !bookId) return;
     if (!titleChanged && !textChanged) return; // No changes to save
 
@@ -388,6 +314,78 @@ export function BookChunkEditor({
     } finally {
       setSaving(false);
     }
+  }, [editingChapter, bookId, titleChanged, textChanged, chapters, getAccessToken]);
+
+  // Ctrl+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (editingChapter && (titleChanged || textChanged)) {
+          handleSaveChapter();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingChapter, titleChanged, textChanged, handleSaveChapter]);
+
+  const loadChapterText = async (chapter: Chapter) => {
+    // If showChunkText is false, don't load the text
+    if (!showChunkText) {
+      return '';
+    }
+
+    if (!chapter.chapter_text && chapter.chapter_text_path) {
+      setLoadingText((prev) => ({ ...prev, [chapter.chapter_id]: true }));
+      try {
+        const token = await getAccessToken();
+        if (!token) return '';
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to load chapter text');
+        }
+
+        const data = await response.json();
+        return data.chapter_text || '';
+      } catch (error) {
+        console.error('Error loading chapter text:', error);
+        toast.error('Failed to load chapter text');
+        return '';
+      } finally {
+        setLoadingText((prev) => ({ ...prev, [chapter.chapter_id]: false }));
+      }
+    }
+    return chapter.chapter_text || '';
+  };
+
+  const handleEditChapter = async (chapter: Chapter) => {
+    // Immediately show the chapter in the editor (responsive UI)
+    setSelectedChapterId(chapter.chapter_id);
+    const initialChapter = {
+      ...chapter,
+      chapter_text: chapter.chapter_text || '',
+    };
+    setEditingChapter(initialChapter);
+    setOriginalChapter(initialChapter);
+    setTitleChanged(false);
+    setTextChanged(false);
+
+    // Then fetch the text if needed
+    const text = await loadChapterText(chapter);
+    const fullChapter = { ...chapter, chapter_text: text };
+    setEditingChapter(fullChapter);
+    setOriginalChapter(fullChapter);
   };
 
   const handleDeleteChapter = async (chapterId: number) => {
@@ -611,20 +609,17 @@ export function BookChunkEditor({
 
     setChapters(newChapters);
     setDraggedIndex(index); // Update to new position
-    setDragOverIndex(index);
   };
 
-  const handleDrop = async (index: number) => {
+  const handleDrop = async (_index: number) => {
     if (draggedIndex === null) {
       setDraggedIndex(null);
-      setDragOverIndex(null);
       return;
     }
 
     // Array is already reordered from dragover events
     // Clean up drag state
     setDraggedIndex(null);
-    setDragOverIndex(null);
 
     // Persist to database
     try {
@@ -662,7 +657,6 @@ export function BookChunkEditor({
   const handleDragEnd = () => {
     // Clean up drag state
     setDraggedIndex(null);
-    setDragOverIndex(null);
   };
 
   const handleChapterClick = (chapter: Chapter) => {
