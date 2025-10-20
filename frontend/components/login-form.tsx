@@ -39,16 +39,16 @@ export function LoginForm() {
     } catch (error) {
       console.error('Authentication error:', error);
 
-      // Check if it's a configuration error
+      // Check if it's a network/connection error
       const errorMessage =
         error instanceof Error ? error.message : 'Authentication failed';
       if (
         errorMessage.includes('fetch') ||
         errorMessage.includes('network') ||
-        errorMessage.includes('supabase')
+        errorMessage.includes('Failed to fetch')
       ) {
         toast.error(
-          'Configuration Error: Please check your Supabase credentials in .env.local. See AUTHENTICATION_SETUP.md for setup instructions.',
+          'Connection Error: Unable to reach the backend server. Please check that the backend is running and NEXT_PUBLIC_BACKEND_URL is configured correctly.',
           { duration: 5000 }
         );
       } else {
