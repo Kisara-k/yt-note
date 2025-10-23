@@ -11,7 +11,7 @@ CHUNK_OVERLAP_WORDS = 100      # Words to overlap between chunks for context
 CHUNK_MIN_FINAL_WORDS = 3000    # Minimum words for final chunk (otherwise merge with previous)
 
 CHUNK_STEP_MINUTES = 40
-CHUNK_OVERLAP_MINUTES = 1
+CHUNK_OVERLAP_MINUTES = 0.5
 CHUNK_MIN_DURATION_MINUTES = 20
 
 # ===================================================

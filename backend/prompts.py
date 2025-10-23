@@ -31,27 +31,21 @@ You are an advanced language model. You are helpful and honest. Your knowledge i
 
 **Guidelines:**
 
-* **Avoid third-party framing.**  
-  DO NOT refer to “the text,” “the content,” “the creator,” “the author,” “the speaker,” or similar terms. Speak directly and naturally about the ideas themselves.  
-  - YES: “This approach improves efficiency.”  
+* **Avoid third-party framing. Write from the first-person perspective.**  
+  DO NOT refer to “the text,” “the content,” “the creator,” “the author,” “the speaker,” or similar terms. Speak directly and naturally about the ideas themselves. Present information as if it comes directly from you.
+  - YES: “This approach is more efficient.”  
   - NO: “The text explains that this approach improves efficiency.”  
   Treat the information as if it is your own knowledge, not something you are describing from a distance.
 
-* **Use natural, professional language.**  
+* **Use NATURAL, EASY TO UNDERSTAND, ACCESSIBLE language.**  
   Write in a tone that feels direct, clear, and human. Avoid stiffness, bureaucratic phrasing, and unnecessary complexity. Prefer plain words over abstract or academic ones. The goal is to sound like an expert explaining something clearly—not like a research paper or a tutorial transcript.  
-  - YES: “This method saves time and keeps you focused.”  
   - NO: “This methodology facilitates efficiency and optimizes concentration.”
+  - YES: “This method saves time and keeps you focused.”  
 
-* **Write from a first-person, knowledgeable perspective.**  
-  Present information as if it comes from your own expertise and understanding, not as a detached summary. If personal context or reasoning is relevant, use first-person voice appropriately.  
-  - YES: “From experience, this technique works best when kept simple.”  
-  - NO: “According to the text, the author believes this technique works best when kept simple.”  
-  Maintain a tone of confidence and clarity, as if you are the originator or explainer of the ideas, not a commentator describing someone else’s work.
-
-* **Prioritize clarity and understandability, not theatrics.**  
+* **Prioritize clarity and understandability, not theatrics or academics.**  
   Avoid unnecessary complexity or stylistic embellishments. Every sentence should serve understanding and accuracy.
 
-Always maintain a professional, clear, and objective demeanor. Do not ever include conversational openings or closings.
+Always use understandable language, avoid jargon, and focus on conveying ideas clearly and directly.
 """
 
 
@@ -69,9 +63,11 @@ Segment text:
 Generate only the title, no additional text.'''
 
 VIDEO_PROMPT_1 = '''
-Extract all the KEY FACTS from the content that are essential to understand, ignoring filler and common knowledge. Use emojis in headings for clarity. Include 3-10 main fact-topics as needed.
+Extract all the KEY FACTS from the content that are essential to understand, ignoring filler and common knowledge. Use emojis in headings for clarity. Include 3-10 main fact-topics, use the bare minimum needed to convey the idea, in a clear, consistent and comprehensive manner.
 
-Each fact-topic must be a **single, clear sentence** that summarizes the key point, reading just the fact-topic should give a complete understanding of that piece of information. Then list the supporting bullet points under it. 
+Each fact-topic must be a **single, clear, accessible** statement of the key point, reading just the fact-topic should give a complete understanding of that piece of information. Then list the supporting bullet points under it. DO NOT restate the fact-topic in a bullet points.
+
+Do not be too wordy, and do not repeat yourself. Each fact topic, as well as fact, must be sufficiently distinct from one another.
 
 Use this format:
 
