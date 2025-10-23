@@ -9,7 +9,8 @@ python-dotenv==1.0.0            # Load environment variables from .env files
 # Packages allowed to upgrade (actively maintained / safe for >=)
 supabase>=2.22.0                 # Supabase Python client for database operations
 google-api-python-client>=2.184.0  # YouTube Data API v3 client
-yt-dlp>=2025.9.26                # YouTube video downloader and subtitle extractor
+# yt-dlp>=2025.9.26                # YouTube video downloader and subtitle extractor
+youtube-transcript-api==1.2.3
 openai>=1.101.0                  # OpenAI API client for GPT models
 PyJWT>=2.10.1                    # JSON Web Token implementation for auth
 httpx>=0.28.1                     # Modern async HTTP client (used by Supabase)
