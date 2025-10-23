@@ -213,14 +213,18 @@ def _download_and_chunk_subtitles_api(video_id: str, step: int, overlap: int, mi
     MIN_DURATION = min_duration * 60  # 20 min
 
     print("Chunking parameters - STEP:", STEP, "OVERLAP:", OVERLAP, "MIN_DURATION:", MIN_DURATION)
-    print("Using proxy:", proxy_username, proxy_password)
 
-    ytt_api = YouTubeTranscriptApi(
-        proxy_config=WebshareProxyConfig(
-            proxy_username=proxy_username,
-            proxy_password=proxy_password,
+    # Conditionally build the proxy config only if credentials exist
+    if proxy_username and proxy_password:
+        print("Using proxy:", proxy_username, proxy_password)
+        ytt_api = YouTubeTranscriptApi(
+            proxy_config = WebshareProxyConfig(
+                proxy_username=proxy_username,
+                proxy_password=proxy_password,
+            )
         )
-    )
+    else:
+        ytt_api = YouTubeTranscriptApi()
 
     print("Fetching transcript for video ID:", video_id)
 
