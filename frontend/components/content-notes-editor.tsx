@@ -990,6 +990,7 @@ export function ContentNotesEditor({ contentType }: ContentNotesEditorProps) {
               bookId={isVideo ? undefined : (contentInfo as BookInfo).id}
               isBook={!isVideo}
               refreshAIFields={refreshAIFields}
+              contentTitle={contentInfo?.title}
             />
           </div>
         )}

@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { RefreshCw, SquarePen, Save, X } from 'lucide-react';
+import { RefreshCw, SquarePen, Save, X, Download } from 'lucide-react';
 import { reactMarkdownComponents } from '@/lib/markdown-styles';
 
 const BUTTON_OPACITY_CLASS =
@@ -24,6 +24,8 @@ interface AIFieldDisplayProps {
   isLoading?: boolean;
   useMarkdown?: boolean;
   scrollableHeader?: boolean;
+  chunkTitle?: string; // Title of the chunk/chapter for download filename
+  contentTitle?: string; // Title of the book/video for download filename
 }
 
 export function AIFieldDisplay({
@@ -36,6 +38,8 @@ export function AIFieldDisplay({
   isLoading = false,
   useMarkdown = true,
   scrollableHeader = false,
+  chunkTitle,
+  contentTitle,
 }: AIFieldDisplayProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
@@ -91,6 +95,33 @@ export function AIFieldDisplay({
     setIsEditing(false);
   };
 
+  const handleDownload = () => {
+    if (!content) return;
+
+    // Create filename: {book/video title} - {chapter/chunk title} - {field}.txt
+    const sanitizeFilename = (str: string) =>
+      str.replace(/[<>:"/\\|?*]/g, '').trim();
+
+    const parts = [];
+    if (contentTitle) parts.push(sanitizeFilename(contentTitle));
+    if (chunkTitle) parts.push(sanitizeFilename(chunkTitle));
+    parts.push(sanitizeFilename(title));
+
+    const filename =
+      parts.length > 0 ? `${parts.join(' - ')}.txt` : 'content.txt';
+
+    // Create blob and download
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const scrollbarClasses =
     'scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500';
   const scrollbarStyles = {
@@ -110,6 +141,18 @@ export function AIFieldDisplay({
           {hasUnsavedChanges && <span className='text-amber-500'> *</span>}
         </CardTitle>
         <div className='flex items-center gap-1 shrink-0'>
+          {!isEditing && content && (
+            <Button
+              size='sm'
+              variant='ghost'
+              onClick={handleDownload}
+              disabled={isRegenerating || isLoading}
+              className={`h-5 w-5 p-0 ${BUTTON_OPACITY_CLASS}`}
+              title='Download as text file'
+            >
+              <Download className='h-3 w-3' />
+            </Button>
+          )}
           {onUpdate && !isEditing && (
             <Button
               size='sm'

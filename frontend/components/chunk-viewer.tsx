@@ -48,6 +48,7 @@ interface ChunkViewerProps {
   bookId?: string;
   isBook?: boolean;
   refreshAIFields?: number; // Increment this to trigger AI field refresh
+  contentTitle?: string; // Title of the book/video for download filenames
 }
 
 export function ChunkViewer({
@@ -55,6 +56,7 @@ export function ChunkViewer({
   bookId,
   isBook = false,
   refreshAIFields = 0,
+  contentTitle,
 }: ChunkViewerProps) {
   const [chunkIndex, setChunkIndex] = useState<ChunkIndex[]>([]);
   const [selectedChunkId, setSelectedChunkId] = useState<number | null>(null);
@@ -769,6 +771,10 @@ export function ChunkViewer({
             onUpdate={(newContent) => handleUpdateField('field_1', newContent)}
             isRegenerating={regeneratingField === 'field_1'}
             isLoading={loading || loadingChunks}
+            contentTitle={contentTitle}
+            chunkTitle={
+              chunkDetails?.chapter_title || chunkDetails?.short_title
+            }
           />
 
           <AIFieldDisplay
@@ -779,6 +785,10 @@ export function ChunkViewer({
             onUpdate={(newContent) => handleUpdateField('field_2', newContent)}
             isRegenerating={regeneratingField === 'field_2'}
             isLoading={loading || loadingChunks}
+            contentTitle={contentTitle}
+            chunkTitle={
+              chunkDetails?.chapter_title || chunkDetails?.short_title
+            }
           />
 
           <AIFieldDisplay
@@ -789,6 +799,10 @@ export function ChunkViewer({
             onUpdate={(newContent) => handleUpdateField('field_3', newContent)}
             isRegenerating={regeneratingField === 'field_3'}
             isLoading={loading || loadingChunks}
+            contentTitle={contentTitle}
+            chunkTitle={
+              chunkDetails?.chapter_title || chunkDetails?.short_title
+            }
           />
 
           {showChunkText && (
@@ -799,6 +813,10 @@ export function ChunkViewer({
               onUpdate={handleUpdateChunkText}
               isLoading={loading || loadingChunks || loadingChunkText}
               useMarkdown={false}
+              contentTitle={contentTitle}
+              chunkTitle={
+                chunkDetails?.chapter_title || chunkDetails?.short_title
+              }
             />
           )}
         </div>
