@@ -7,16 +7,163 @@ export function cleanJSON(jsonStr: string): string {
   // Remove trailing commas before closing brackets/braces
   let cleaned = jsonStr.replace(/,(\s*[}\]])/g, '$1');
 
-  // Remove single-line comments (// style)
-  cleaned = cleaned.replace(/\/\/.*$/gm, '');
+  // Remove comments (both // and /* */) but respect string literals.
+  // Use a state machine to avoid stripping '//' sequences inside strings
+  let out = '';
+  let inString = false;
+  let esc = false;
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i];
 
-  // Remove multi-line comments (/* */ style)
-  cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+    if (inString) {
+      out += ch;
+      if (esc) {
+        esc = false;
+      } else if (ch === '\\') {
+        esc = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
 
-  // Trim whitespace
-  cleaned = cleaned.trim();
+    // not in string
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      continue;
+    }
+
+    // single-line comment
+    if (ch === '/' && cleaned[i + 1] === '/') {
+      // skip until end of line
+      i += 2;
+      while (i < cleaned.length && cleaned[i] !== '\n') i++;
+      continue;
+    }
+
+    // multi-line comment
+    if (ch === '/' && cleaned[i + 1] === '*') {
+      i += 2;
+      while (
+        i < cleaned.length &&
+        !(cleaned[i] === '*' && cleaned[i + 1] === '/')
+      )
+        i++;
+      i++; // skip the '/'
+      continue;
+    }
+
+    out += ch;
+  }
+
+  cleaned = out.trim();
 
   return cleaned;
+}
+
+// Escape literal newlines inside JSON string literals so that JSON.parse
+// doesn't fail on files that contain unescaped newlines inside quoted values.
+function escapeNewlinesInStrings(src: string): string {
+  let out = '';
+  let inString = false;
+  let esc = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+
+    if (!inString) {
+      if (ch === '"') {
+        inString = true;
+        out += ch;
+        esc = false;
+        continue;
+      }
+      out += ch;
+      continue;
+    }
+
+    // inString === true
+    if (esc) {
+      // previous char was backslash, keep both
+      out += ch;
+      esc = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      out += ch;
+      esc = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+
+    // Replace raw CR/LF inside string with \n escape so JSON.parse accepts it
+    if (ch === '\n') {
+      out += '\\n';
+      continue;
+    }
+    if (ch === '\r') {
+      // skip CR (will be handled by LF or add explicit \n)
+      out += '\\r';
+      continue;
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
+// Extract top-level JSON objects by matching braces while respecting strings.
+function extractTopLevelObjects(text: string): string[] {
+  const objects: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let esc = false;
+  let start = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (esc) {
+        esc = false;
+      } else if (ch === '\\') {
+        esc = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+      continue;
+    }
+
+    if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        objects.push(text.slice(start, i + 1));
+        start = -1;
+      }
+      continue;
+    }
+  }
+
+  return objects;
 }
 
 // Parse JSON that may or may not be wrapped in an array
@@ -40,6 +187,16 @@ export function parseFlexibleJSON(jsonStr: string): any[] {
     // If parsing fails, it might be multiple objects separated by commas or newlines
   }
 
+  // Try escaping literal newlines inside string literals and parse again
+  try {
+    const sanitized = escapeNewlinesInStrings(cleaned);
+    const parsed = JSON.parse(sanitized);
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === 'object' && parsed !== null) return [parsed];
+  } catch (e) {
+    // fall through to other strategies
+  }
+
   // Try wrapping in array brackets (for formats like: {...}, {...})
   if (!cleaned.startsWith('[')) {
     try {
@@ -55,25 +212,17 @@ export function parseFlexibleJSON(jsonStr: string): any[] {
 
   // Try parsing as newline-separated JSON objects (for formats like: {...}\n{...}\n)
   try {
-    const lines = cleaned.split('\n').filter((line) => line.trim());
-    const objects = [];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        // Remove trailing comma if exists
-        const cleanLine = trimmed.replace(/,$/, '');
-        objects.push(JSON.parse(cleanLine));
-      } else if (trimmed.startsWith('{')) {
-        // Handle multi-line objects - collect until we find closing brace
-        const objStr = trimmed;
-        // This is a simplified approach - for complex cases, wrapping in [] already works
-        objects.push(JSON.parse(objStr));
+    // Use a robust top-level object extractor that matches braces while
+    // respecting string literals. This works for large, multi-line objects.
+    const objs = extractTopLevelObjects(cleaned);
+    if (objs.length > 0) {
+      const parsedObjs: any[] = [];
+      for (const o of objs) {
+        // sanitize each object's strings as well
+        const sanitized = escapeNewlinesInStrings(o);
+        parsedObjs.push(JSON.parse(sanitized));
       }
-    }
-
-    if (objects.length > 0) {
-      return objects;
+      return parsedObjs;
     }
   } catch (e) {
     // Failed
