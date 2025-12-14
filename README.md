@@ -6,45 +6,45 @@ A full-stack application for creating and managing markdown notes for **YouTube 
 
 ### YouTube Videos
 
-- ✅ **Subtitle Extraction**: Automatic subtitle download via yt-dlp
-- ✅ **Intelligent Chunking**: Break videos into 5-minute segments
-- ✅ **OpenAI Analysis**: AI-generated titles, summaries, key points, and topics for each chunk
-- ✅ **Chunk Viewer**: Browse and explore video segments with AI insights
-- ✅ **Background Processing**: Async job queue for video processing
+- **Subtitle Extraction**: Automatic subtitle download via yt-dlp
+- **Intelligent Chunking**: Break videos into 5-minute segments
+- **OpenAI Analysis**: AI-generated titles, summaries, key points, and topics for each chunk
+- **Chunk Viewer**: Browse and explore video segments with AI insights
+- **Background Processing**: Async job queue for video processing
 
-### Books (NEW!)
+### Books
 
-- ✅ **Book Management**: Upload books via JSON with chapter structure
-- ✅ **Chapter Storage**: Secure storage in separate database with Supabase Storage
-- ✅ **Chapter Notes**: Take notes on individual chapters
-- ✅ **Book Routes**: `/book` for viewing, `/book/add` for uploading, `/book/filter` for browsing
-- ✅ **Filter & Search**: Browse all books with filtering by title, author, tags
-- ✅ **Custom Book IDs**: User-defined identifiers (e.g., `practical_guide_123`)
+- **Book Management**: Upload books via JSON with chapter structure
+- **Chapter Storage**: Secure storage in separate database with Supabase Storage
+- **Chapter Notes**: Take notes on individual chapters
+- **Book Routes**: `/book` for viewing, `/book/add` for uploading, `/book/filter` for browsing
+- **Filter & Search**: Browse all books with filtering by title, author, tags
+- **Custom Book IDs**: User-defined identifiers (e.g., `practical_guide_123`)
 
 **For complete implementation details**: See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) and [BOOKS_SETUP.md](BOOKS_SETUP.md)
 
-## 🔐 Authentication Required
+## 🔐 Authentication
 
-**The app now requires secure login via Supabase!** 🔒
+The application uses secure login via Supabase with the following features:
 
-- ✅ Secure authentication with JWT tokens
-- ✅ Only verified emails can access (hardcoded whitelist)
-- ✅ No user emails stored in database
-- ✅ Session management with automatic token refresh
+- Secure authentication with JWT tokens
+- Only verified emails can access (hardcoded whitelist)
+- No user emails stored in database
+- Session management with automatic token refresh
 
-**Authentication Setup**: See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for complete setup guide!
+**Authentication Setup**: See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for complete setup guide.
 
 ## ✨ Features
 
-**Web Application** 🎉
+**Web Application**
 
-- ✅ Secure login/signup with Supabase Auth
-- ✅ **Videos**: Enter YouTube video URL, process with AI, take notes (`/video`)
-- ✅ **Books**: Upload books via JSON, take chapter notes (`/book`, `/book/add`, `/book/filter`)
-- ✅ **Filter Pages**: Browse and filter videos (`/video/filter`) or books (`/book/filter`)
-- ✅ Create markdown notes with TipTap editor
-- ✅ Auto-save notes to database
-- ✅ Load existing notes automatically
+- Secure login/signup with Supabase Auth
+- **Videos**: Enter YouTube video URL, process with AI, take notes (`/video`)
+- **Books**: Upload books via JSON, take chapter notes (`/book`, `/book/add`, `/book/filter`)
+- **Filter Pages**: Browse and filter videos (`/video/filter`) or books (`/book/filter`)
+- Create markdown notes with TipTap editor
+- Auto-save notes to database
+- Load existing notes automatically
 
 ## 🚀 Quick Start
 
@@ -58,8 +58,6 @@ A full-stack application for creating and managing markdown notes for **YouTube 
 - OpenAI API key (optional, for AI features)
 
 ### Setup (10 minutes)
-
-> **⚠️ Important**: Authentication is now required. See [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md) for detailed setup.
 
 1. **Install dependencies**
 
@@ -141,18 +139,18 @@ cd frontend
 pnpm dev
 ```
 
-7. **Sign in and start taking notes!**
+7. **Sign in and start taking notes**
 
 - Open http://localhost:3000
 - Sign in with a verified email account
-- Start creating notes for your favorite videos! 🎉
+- Start creating notes for your favorite videos
 
 ## 📁 Project Structure
 
 ```
 yt-note/
 ├── backend/
-│   ├── auth/                      # Authentication module (NEW - Auth)
+│   ├── auth/                      # Authentication module
 │   │   ├── __init__.py            # Module exports
 │   │   ├── config.py              # Verified email hashes
 │   │   ├── middleware.py          # JWT verification & email whitelist
@@ -163,18 +161,18 @@ yt-note/
 │   ├── main.py                    # Server entry point
 │   └── db/
 │       ├── create_table.sql       # Database schemas
-│       ├── update_schema.sql      # Auth migration (NEW - Auth)
+│       ├── update_schema.sql      # Auth migration
 │       ├── youtube_crud.py        # Video CRUD operations
 │       ├── video_notes_crud.py    # Note CRUD (no user_email)
 │       └── requirements.txt       # Python dependencies (includes pyjwt)
 └── frontend/
     ├── lib/
-    │   └── auth-context.tsx       # Auth context provider (NEW - Auth)
+    │   └── auth-context.tsx       # Auth context provider
     ├── app/
-    │   ├── layout.tsx             # With AuthProvider (NEW - Auth)
-    │   └── page.tsx               # Auth-protected main page (NEW - Auth)
+    │   ├── layout.tsx             # With AuthProvider
+    │   └── page.tsx               # Auth-protected main page
     ├── components/
-    │   ├── login-form.tsx         # Login/signup UI (NEW - Auth)
+    │   ├── login-form.tsx         # Login/signup UI
     │   ├── video-notes-editor.tsx # Main UI with auth tokens
     │   └── ui/                    # TipTap editor & UI components
     ├── package.json               # Includes @supabase/supabase-js
@@ -183,46 +181,46 @@ yt-note/
 
 ## 🎯 Features
 
-### Authentication & Security ✅
+### Authentication & Security
 
-- ✅ **Secure Login**: JWT-based authentication via Supabase
-- ✅ **Email Verification**: Only whitelisted emails can access
-- ✅ **Session Management**: Automatic token refresh
-- ✅ **Protected API**: All endpoints require valid authentication
-- ✅ **No Email Storage**: User emails not stored in database
-- ✅ **Sign Out**: Secure session termination
+- **Secure Login**: JWT-based authentication via Supabase
+- **Email Verification**: Only whitelisted emails can access
+- **Session Management**: Automatic token refresh
+- **Protected API**: All endpoints require valid authentication
+- **No Email Storage**: User emails not stored in database
+- **Sign Out**: Secure session termination
 
-### Web Application ✅
+### Web Application
 
-- ✅ **Video Input**: Enter YouTube URL or video ID
-- ✅ **Smart Fetching**: Checks database first, fetches from YouTube API if needed
-- ✅ **Video Display**: Shows title, channel name, views, likes
-- ✅ **TipTap Editor**: Full-featured markdown editor
-- ✅ **Note Management**: Create, edit, and save notes for each video
-- ✅ **Auto-load**: Existing notes load automatically
-- ✅ **Unsaved Indicator**: Know when you have unsaved changes
-- ✅ **Toast Notifications**: User-friendly feedback
+- **Video Input**: Enter YouTube URL or video ID
+- **Smart Fetching**: Checks database first, fetches from YouTube API if needed
+- **Video Display**: Shows title, channel name, views, likes
+- **TipTap Editor**: Full-featured markdown editor
+- **Note Management**: Create, edit, and save notes for each video
+- **Auto-load**: Existing notes load automatically
+- **Unsaved Indicator**: Know when you have unsaved changes
+- **Toast Notifications**: User-friendly feedback
 
-### Task 1: YouTube API Integration ✅
+### Task 1: YouTube API Integration
 
-- ✅ Fetch YouTube video details using batch API (up to 50 videos per request)
-- ✅ Store video data in PostgreSQL/Supabase
-- ✅ Automatic timestamp tracking (created_at, updated_at)
-- ✅ Support for various YouTube URL formats
-- ✅ PostgreSQL array support for tags
-- ✅ JSONB support for complex nested objects
-- ✅ Upsert functionality (update existing or create new)
-- ✅ Comprehensive query functions (by ID, channel, tags, date range)
+- Fetch YouTube video details using batch API (up to 50 videos per request)
+- Store video data in PostgreSQL/Supabase
+- Automatic timestamp tracking (created_at, updated_at)
+- Support for various YouTube URL formats
+- PostgreSQL array support for tags
+- JSONB support for complex nested objects
+- Upsert functionality (update existing or create new)
+- Comprehensive query functions (by ID, channel, tags, date range)
 
 ### Backend API
 
-- ✅ FastAPI REST API with OpenAPI docs
-- ✅ JWT authentication middleware
-- ✅ Email whitelist verification
-- ✅ CORS configured for frontend
-- ✅ Request/response validation
-- ✅ Error handling with proper status codes
-- ✅ Protected endpoints requiring authentication
+- FastAPI REST API with OpenAPI docs
+- JWT authentication middleware
+- Email whitelist verification
+- CORS configured for frontend
+- Request/response validation
+- Error handling with proper status codes
+- Protected endpoints requiring authentication
 
 ### Database Schema
 
@@ -314,7 +312,7 @@ python backend/main.py URL1 URL2 URL3
 
 All protected endpoints require an `Authorization: Bearer <token>` header.
 
-**New Endpoints:**
+**Endpoints:**
 
 - `POST /api/auth/verify-email` - Check if email is in verified list (public)
 
@@ -494,7 +492,7 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 
 ## 📝 Roadmap
 
-### Completed ✅
+### Completed
 
 - [x] Task 1: YouTube API integration
 - [x] Task 1: Database schema and CRUD operations
@@ -505,11 +503,11 @@ You've hit YouTube API's daily quota limit (10,000 units). Wait until the next d
 - [x] Task 2: Save and load notes
 - [x] Task 2: FastAPI backend
 - [x] Task 2: Next.js frontend
-- [x] **Authentication: Supabase Auth integration** ⭐ NEW
-- [x] **Authentication: Email whitelist verification** ⭐ NEW
-- [x] **Authentication: JWT token validation** ⭐ NEW
-- [x] **Authentication: Protected API endpoints** ⭐ NEW
-- [x] **Security: No email storage in database** ⭐ NEW
+- [x] Authentication: Supabase Auth integration
+- [x] Authentication: Email whitelist verification
+- [x] Authentication: JWT token validation
+- [x] Authentication: Protected API endpoints
+- [x] Security: No email storage in database
 
 ### Future Enhancements 🚀
 
