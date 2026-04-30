@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
-import { API_BASE_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-client';
 import Link from 'next/link';
 
 interface VideoInfo {
@@ -170,14 +170,10 @@ export function VideoFilter() {
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/video/${videoToDelete.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiFetch(
+        `/api/video/${videoToDelete.id}`,
+        token,
+        { method: 'DELETE' }
       );
 
       if (!response.ok) {

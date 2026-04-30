@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './auth-context';
-import { API_BASE_URL } from './config';
+import { apiFetch } from './api-client';
 
 interface AIFieldsSnapshot {
   [chunkId: number]: {
@@ -78,15 +78,10 @@ export function useBulkAIPolling() {
         if (!token) return null;
 
         const endpoint = isBook
-          ? `${API_BASE_URL}/api/book/${resourceId}/chapters/ai-status`
-          : `${API_BASE_URL}/api/chunks/${resourceId}/ai-status`;
+          ? `/api/book/${resourceId}/chapters/ai-status`
+          : `/api/chunks/${resourceId}/ai-status`;
 
-        const response = await fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal,
-        });
+        const response = await apiFetch(endpoint, token, { signal });
 
         if (!response.ok) {
           console.error(

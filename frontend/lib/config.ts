@@ -1,15 +1,16 @@
 /**
  * API Configuration
- * Central configuration for backend API URL
  *
- * Development: http://localhost:8000
- * Production: Set NEXT_PUBLIC_BACKEND_URL in Vercel environment variables
+ * The backend URL is configured via the BACKEND_URL environment variable.
+ * This is a server-side-only variable (no NEXT_PUBLIC_ prefix), so it is
+ * never exposed to the browser.
  *
- * 🔒 SECURITY NOTE:
- * This is the ONLY environment variable needed in the frontend!
- * All Supabase credentials are kept server-side only.
- * Authentication flows through the backend API.
+ * All frontend API calls go through Next.js proxy routes at /api/...
+ * which forward requests to the backend using BACKEND_URL.
+ *
+ * Set in .env.local for development:
+ *   BACKEND_URL=http://localhost:8000
+ *
+ * Set in Vercel / Railway for production:
+ *   BACKEND_URL=https://your-backend.railway.app
  */
-
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';

@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './auth-context';
-import { API_BASE_URL } from './config';
+import { apiFetch } from './api-client';
 
 interface AIFields {
   short_title?: string;
@@ -83,15 +83,10 @@ export function useAIPolling() {
         if (!token) return null;
 
         const endpoint = isBook
-          ? `${API_BASE_URL}/api/book/${resourceId}/chapters/ai-status?chapter_id=${chunkId}`
-          : `${API_BASE_URL}/api/chunks/${resourceId}/ai-status?chunk_id=${chunkId}`;
+          ? `/api/book/${resourceId}/chapters/ai-status?chapter_id=${chunkId}`
+          : `/api/chunks/${resourceId}/ai-status?chunk_id=${chunkId}`;
 
-        const response = await fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal,
-        });
+        const response = await apiFetch(endpoint, token, { signal });
 
         if (!response.ok) {
           console.error(
@@ -139,20 +134,15 @@ export function useAIPolling() {
         }
 
         const endpoint = isBook
-          ? `${API_BASE_URL}/api/book/${resourceId}/chapters`
-          : `${API_BASE_URL}/api/chunks/${resourceId}`;
+          ? `/api/book/${resourceId}/chapters`
+          : `/api/chunks/${resourceId}`;
 
         console.log(
           '[useAIPolling] Loading complete AI fields from:',
           endpoint
         );
 
-        const response = await fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal,
-        });
+        const response = await apiFetch(endpoint, token, { signal });
 
         if (!response.ok) {
           console.error(

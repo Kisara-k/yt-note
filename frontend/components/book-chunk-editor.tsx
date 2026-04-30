@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth-context';
-import { API_BASE_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-client';
 import { useSettings } from '@/lib/settings-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -106,11 +106,7 @@ export function BookChunkEditor({
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/book/${book_id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(`/api/book/${book_id}`, token);
 
       if (!response.ok) {
         throw new Error('Failed to load book metadata');
@@ -135,13 +131,9 @@ export function BookChunkEditor({
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/book/${book_id}/chapters`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiFetch(
+        `/api/book/${book_id}/chapters`,
+        token
       );
 
       if (!response.ok) {
@@ -190,14 +182,11 @@ export function BookChunkEditor({
 
       if (isNewChapter) {
         // Create new chapter using POST
-        response = await fetch(
-          `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}`,
+        response = await apiFetch(
+          `/api/book/${bookId}/chapter/${editingChapter.chapter_id}`,
+          token,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({
               chapter_title: editingChapter.chapter_title,
               chapter_text: editingChapter.chapter_text || '',
@@ -208,14 +197,11 @@ export function BookChunkEditor({
         // Update existing chapter - update title and/or text
         if (titleChanged && textChanged) {
           // Both changed - update title first, then text
-          const titleResponse = await fetch(
-            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+          const titleResponse = await apiFetch(
+            `/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            token,
             {
               method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
               body: JSON.stringify({
                 chapter_title: editingChapter.chapter_title,
               }),
@@ -225,14 +211,11 @@ export function BookChunkEditor({
             throw new Error('Failed to update chapter title');
           }
 
-          response = await fetch(
-            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+          response = await apiFetch(
+            `/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            token,
             {
               method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
               body: JSON.stringify({
                 chapter_text: editingChapter.chapter_text,
               }),
@@ -240,14 +223,11 @@ export function BookChunkEditor({
           );
         } else if (titleChanged) {
           // Only title changed
-          response = await fetch(
-            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+          response = await apiFetch(
+            `/api/book/${bookId}/chapter/${editingChapter.chapter_id}/title`,
+            token,
             {
               method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
               body: JSON.stringify({
                 chapter_title: editingChapter.chapter_title,
               }),
@@ -255,14 +235,11 @@ export function BookChunkEditor({
           );
         } else if (textChanged) {
           // Only text changed
-          response = await fetch(
-            `${API_BASE_URL}/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+          response = await apiFetch(
+            `/api/book/${bookId}/chapter/${editingChapter.chapter_id}/text`,
+            token,
             {
               method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
               body: JSON.stringify({
                 chapter_text: editingChapter.chapter_text,
               }),
@@ -343,13 +320,9 @@ export function BookChunkEditor({
         const token = await getAccessToken();
         if (!token) return '';
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const response = await apiFetch(
+          `/api/book/${bookId}/chapter/${chapter.chapter_id}?include_text=true`,
+          token
         );
 
         if (!response.ok) {
@@ -397,14 +370,10 @@ export function BookChunkEditor({
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/book/${bookId}/chapter/${chapterId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiFetch(
+        `/api/book/${bookId}/chapter/${chapterId}`,
+        token,
+        { method: 'DELETE' }
       );
 
       if (!response.ok) {
@@ -466,14 +435,11 @@ export function BookChunkEditor({
 
       const chapterOrder = newChapters.map((ch) => ch.chapter_id);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/book/${bookId}/chapters/reorder`,
+      const response = await apiFetch(
+        `/api/book/${bookId}/chapters/reorder`,
+        token,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify({ chapter_order: chapterOrder }),
         }
       );
@@ -547,14 +513,11 @@ export function BookChunkEditor({
         const chapter = normalizedChapters[i];
         const chapterId = nextChapterId + i;
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/book/${bookId}/chapter/${chapterId}`,
+        const response = await apiFetch(
+          `/api/book/${bookId}/chapter/${chapterId}`,
+          token,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({
               chapter_title: chapter.title,
               chapter_text: chapter.content,
@@ -631,14 +594,11 @@ export function BookChunkEditor({
 
       const chapterOrder = chapters.map((ch) => ch.chapter_id);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/book/${bookId}/chapters/reorder`,
+      const response = await apiFetch(
+        `/api/book/${bookId}/chapters/reorder`,
+        token,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify({ chapter_order: chapterOrder }),
         }
       );
@@ -698,12 +658,8 @@ export function BookChunkEditor({
         newBookId = normalized;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/book/${bookId}`, {
+      const response = await apiFetch(`/api/book/${bookId}`, token, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           new_book_id: newBookId !== bookId ? newBookId : undefined,
           title: bookMetadata.title,

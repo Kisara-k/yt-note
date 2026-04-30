@@ -38,7 +38,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { API_BASE_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -88,11 +88,7 @@ export function BookFilter() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/books`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/books', token);
 
       if (!response.ok) {
         throw new Error('Failed to load books');
@@ -140,14 +136,10 @@ export function BookFilter() {
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/book/${bookToDelete.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiFetch(
+        `/api/book/${bookToDelete.id}`,
+        token,
+        { method: 'DELETE' }
       );
 
       if (!response.ok) {

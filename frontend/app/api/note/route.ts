@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 export async function POST(request: NextRequest) {
   try {
+    const token = request.headers.get('authorization');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { video_id, note_content, user_email } = body;
+    const { video_id, note_content } = body;
 
     if (!video_id || !note_content) {
       return NextResponse.json(
@@ -19,8 +25,9 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: token,
       },
-      body: JSON.stringify({ video_id, note_content, user_email }),
+      body: JSON.stringify({ video_id, note_content }),
     });
 
     if (!response.ok) {
@@ -44,18 +51,23 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = request.headers.get('authorization');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const user_email = searchParams.get('user_email');
     const limit = searchParams.get('limit') || '50';
 
     // Build query string
     const queryParams = new URLSearchParams();
-    if (user_email) queryParams.append('user_email', user_email);
     queryParams.append('limit', limit);
 
     // Call backend API
     const response = await fetch(
-      `${BACKEND_URL}/api/notes?${queryParams.toString()}`
+      `${BACKEND_URL}/api/notes?${queryParams.toString()}`,
+      { headers: { Authorization: token } }
     );
 
     if (!response.ok) {

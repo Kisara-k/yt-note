@@ -18,7 +18,7 @@ import { useSettings } from '@/lib/settings-context';
 import { CustomTooltip } from '@/components/custom-tooltip';
 import { TiptapMarkdownEditor } from '@/components/tiptap-markdown-editor';
 import { NoteEditor } from '@/components/note-editor';
-import { API_BASE_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-client';
 import { AIFieldDisplay } from '@/components/ai-field-display';
 import { useAIPolling } from '@/lib/use-ai-polling';
 
@@ -92,14 +92,10 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapters/index`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/index`;
+        ? `/api/book/${resourceId}/chapters/index`
+        : `/api/chunks/${resourceId}/index`;
 
-      const response = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(endpoint, token);
 
       if (!response.ok) {
         if (response.status === 404 || response.status === 500) {
@@ -150,14 +146,10 @@ export function ChunkViewer({
         }
 
         const endpoint = isBook
-          ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkId}?include_text=${showChunkText}`
-          : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkId}?include_text=${showChunkText}`;
+          ? `/api/book/${resourceId}/chapter/${chunkId}?include_text=${showChunkText}`
+          : `/api/chunks/${resourceId}/${chunkId}?include_text=${showChunkText}`;
 
-        const response = await fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch(endpoint, token);
 
         if (!response.ok) {
           // Silently handle failed responses
@@ -234,14 +226,10 @@ export function ChunkViewer({
           }
 
           const endpoint = isBook
-            ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${selectedChunkId}?include_text=true`
-            : `${API_BASE_URL}/api/chunks/${resourceId}/${selectedChunkId}?include_text=true`;
+            ? `/api/book/${resourceId}/chapter/${selectedChunkId}?include_text=true`
+            : `/api/chunks/${resourceId}/${selectedChunkId}?include_text=true`;
 
-          const response = await fetch(endpoint, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await apiFetch(endpoint, token);
 
           if (!response.ok) {
             setLoadingChunkText(false);
@@ -311,15 +299,11 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/note`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/note`;
+        ? `/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/note`
+        : `/api/chunks/${resourceId}/${chunkDetails.chunk_id}/note`;
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, token, {
         method: isBook ? 'POST' : 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(
           isBook
             ? {
@@ -367,14 +351,10 @@ export function ChunkViewer({
       if (!token) return null;
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapters`
-        : `${API_BASE_URL}/api/chunks/${resourceId}`;
+        ? `/api/book/${resourceId}/chapters`
+        : `/api/chunks/${resourceId}`;
 
-      const response = await fetch(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(endpoint, token);
 
       if (!response.ok) {
         console.error(
@@ -426,8 +406,8 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/jobs/process-book-chapter-ai`
-        : `${API_BASE_URL}/api/jobs/process-video-chunk-ai`;
+        ? `/api/jobs/process-book-chapter-ai`
+        : `/api/jobs/process-video-chunk-ai`;
 
       const body = isBook
         ? {
@@ -441,12 +421,8 @@ export function ChunkViewer({
             chunk_text: chunkDetails.chunk_text,
           };
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(body),
       });
 
@@ -537,29 +513,25 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/regenerate-ai-field`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/regenerate-ai-field`;
+        ? `/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/regenerate-ai-field`
+        : `/api/chunks/${resourceId}/${chunkDetails.chunk_id}/regenerate-ai-field`;
 
       const body = isBook
         ? {
             book_id: resourceId,
             chapter_id: chunkDetails.chunk_id,
             field_name: fieldName,
-            chapter_text: chunkDetails.chunk_text, // Pass chapter text to avoid backend loading
+            chapter_text: chunkDetails.chunk_text,
           }
         : {
             video_id: resourceId,
             chunk_id: chunkDetails.chunk_id,
             field_name: fieldName,
-            chunk_text: chunkDetails.chunk_text, // Pass chunk text to avoid backend loading
+            chunk_text: chunkDetails.chunk_text,
           };
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(body),
       });
 
@@ -613,15 +585,11 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/update-ai-field`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/update-ai-field`;
+        ? `/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/update-ai-field`
+        : `/api/chunks/${resourceId}/${chunkDetails.chunk_id}/update-ai-field`;
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, token, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           field_name: fieldName,
           field_value: newContent,
@@ -671,15 +639,11 @@ export function ChunkViewer({
       }
 
       const endpoint = isBook
-        ? `${API_BASE_URL}/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/text`
-        : `${API_BASE_URL}/api/chunks/${resourceId}/${chunkDetails.chunk_id}/text`;
+        ? `/api/book/${resourceId}/chapter/${chunkDetails.chunk_id}/text`
+        : `/api/chunks/${resourceId}/${chunkDetails.chunk_id}/text`;
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, token, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(
           isBook ? { chapter_text: newContent } : { chunk_text: newContent }
         ),

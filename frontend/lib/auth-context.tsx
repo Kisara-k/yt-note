@@ -7,7 +7,7 @@ import {
   useState,
   useCallback,
 } from 'react';
-import { API_BASE_URL } from './config';
+import { apiFetch } from './api-client';
 
 interface User {
   id: string;
@@ -43,11 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (storedUser && accessToken) {
           // Verify token is still valid
-          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
+          const response = await apiFetch('/api/auth/me', accessToken);
 
           if (response.ok) {
             const data = await response.json();
@@ -76,9 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       if (!refreshToken) return false;
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      const response = await apiFetch('/api/auth/refresh', null, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
@@ -105,9 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
+      const response = await apiFetch('/api/auth/signin', null, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
@@ -131,9 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      const response = await apiFetch('/api/auth/signup', null, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
@@ -165,14 +158,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (token) {
         // Notify backend (optional, for logging/tracking)
-        await fetch(`${API_BASE_URL}/api/auth/signout`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }).catch(() => {
-          // Ignore errors, we're signing out anyway
-        });
+        await apiFetch('/api/auth/signout', token, { method: 'POST' }).catch(
+          () => {
+            // Ignore errors, we're signing out anyway
+          }
+        );
       }
 
       // Clear local storage
@@ -195,11 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // In production, you might want to decode JWT and check exp claim
     try {
       // Try to use the token
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/auth/me', token);
 
       if (response.ok) {
         return token;

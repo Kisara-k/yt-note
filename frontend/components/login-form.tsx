@@ -48,7 +48,7 @@ export function LoginForm() {
         errorMessage.includes('Failed to fetch')
       ) {
         toast.error(
-          'Connection Error: Unable to reach the backend server. Please check that the backend is running and NEXT_PUBLIC_BACKEND_URL is configured correctly.',
+          'Connection Error: Unable to reach the backend server. Please check that the backend is running and BACKEND_URL is configured correctly.',
           { duration: 5000 }
         );
       } else {
